@@ -7,10 +7,8 @@ package cs555.system.util;
  */
 public interface Constants {
 
-  final byte SUCCESS = ( byte ) 200;
-
-  final byte FAILURE = ( byte ) 500;
-
-  final int peer_ID = 0;
+  final byte FAILURE = ( byte ) 0;
+  
+  final byte SUCCESS = ( byte ) 1;
 
 }

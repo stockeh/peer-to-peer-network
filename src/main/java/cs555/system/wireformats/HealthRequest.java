@@ -9,8 +9,6 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 
 /**
- * Basic heartbeat message from the discovery to the chunk server to
- * check for life.
  * 
  * @author stock
  *

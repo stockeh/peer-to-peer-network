@@ -12,12 +12,8 @@ import cs555.system.util.Properties;
 import cs555.system.wireformats.Event;
 import cs555.system.wireformats.Protocol;
 
+
 /**
- * The control flow of the application occurs through the discovery
- * managing the chunk servers.
- * 
- * Chunk servers and peers alike will establish connections with the
- * discovery.
  *
  * @author stock
  *
@@ -72,7 +68,7 @@ public class Discovery implements Node {
     LOG.debug( "discovery node starting up at: " + new Date() );
 
     try ( ServerSocket serverSocket =
-        new ServerSocket( Integer.valueOf( Properties.discovery_PORT ) ) )
+        new ServerSocket( Integer.valueOf( Properties.DISCOVERY_PORT ) ) )
     {
       Discovery discovery =
           new Discovery( InetAddress.getLocalHost().getHostName(),
