@@ -44,11 +44,10 @@ public class ConnectionUtilities {
    * @throws IOException
    * @throws NumberFormatException
    */
-  public TCPConnection cacheConnection(Node node, String[] initialConnection,
+  public TCPConnection cacheConnection(Node node, String[] address,
       boolean startConnection) throws NumberFormatException, IOException {
-    String connectionDetails =
-        connectionStringBuilder.append( initialConnection[ 0 ] ).append( ":" )
-            .append( initialConnection[ 1 ] ).toString();
+    String connectionDetails = connectionStringBuilder.append( address[ 0 ] )
+        .append( ":" ).append( address[ 1 ] ).toString();
     connectionStringBuilder.setLength( 0 );
 
     TCPConnection connection;
@@ -57,8 +56,8 @@ public class ConnectionUtilities {
       connection = temporaryConnections.get( connectionDetails );
     } else
     {
-      connection = ConnectionUtilities.establishConnection( node,
-          initialConnection[ 0 ], Integer.parseInt( initialConnection[ 1 ] ) );
+      connection = ConnectionUtilities.establishConnection( node, address[ 0 ],
+          Integer.parseInt( address[ 1 ] ) );
       temporaryConnections.put( connectionDetails, connection );
       if ( startConnection )
       {
@@ -99,66 +98,6 @@ public class ConnectionUtilities {
       Integer port) throws IOException {
     Socket socketToTheServer = new Socket( host, port );
     return new TCPConnection( node, socketToTheServer );
-  }
-
-  /**
-   * Registers a node with the discovery.
-   *
-   * @param node requesting to connect
-   * @param identifier distinguishes the type of node
-   * @param discoveryHost identifier for the discovery node
-   * @param discoveryPort number for the discovery node
-   * 
-   * @return a TCPConnection to the discovery
-   * @throws IOException
-   */
-  public static TCPConnection registerNode(Node node, int identifier,
-      String discoveryHost, Integer discoveryPort) throws IOException {
-    try
-    {
-      TCPConnection connection =
-          establishConnection( node, discoveryHost, discoveryPort );
-
-      RegisterRequest registerRequest =
-          new RegisterRequest( Protocol.REGISTER_REQUEST, identifier,
-              node.getHost(), node.getPort() );
-
-      LOG.info( "peer Identifier: " + node.getHost() + ":" + node.getPort() );
-      connection.getTCPSender().sendData( registerRequest.getBytes() );
-      connection.start();
-
-      return connection;
-    } catch ( IOException e )
-    {
-      LOG.error(
-          "Unable to connect to the discovery. Check that it is running, and"
-              + " the connection details are correct. " + e.getMessage() );
-      throw e;
-    }
-  }
-
-  /**
-   * Unregister a node with the discovery.
-   * 
-   * @param node
-   * @param identifier
-   * @param discoveryConnection
-   */
-  public static void unregisterNode(Node node, int identifier,
-      TCPConnection discoveryConnection) {
-    RegisterRequest registerRequest =
-        new RegisterRequest( Protocol.UNREGISTER_REQUEST, identifier,
-            node.getHost(), node.getPort() );
-
-    try
-    {
-      discoveryConnection.getTCPSender().sendData( registerRequest.getBytes() );
-      discoveryConnection.close();
-    } catch ( IOException | InterruptedException e )
-    {
-      LOG.error( e.getMessage() );
-      e.printStackTrace();
-    }
   }
 
 }

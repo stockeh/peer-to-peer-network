@@ -6,16 +6,12 @@ import java.net.ServerSocket;
 import java.util.Date;
 import java.util.Scanner;
 import cs555.system.transport.TCPConnection;
-import cs555.system.util.ConnectionUtilities;
-import cs555.system.util.Constants;
 import cs555.system.util.Logger;
 import cs555.system.util.Properties;
 import cs555.system.wireformats.Event;
 
 /**
- * Single peer to communicate with the file systems discovery and
- * chunk servers for writing and reading data.
- * 
+ *
  * @author stock
  *
  */
@@ -36,9 +32,8 @@ public class Peer implements Node {
   private final int port;
 
   /**
-   * Default constructor - creates a new peer tying the
-   * <b>host:port</b> combination for the node as the identifier for
-   * itself.
+   * Default constructor - creates a new peer tying the <b>host:port</b>
+   * combination for the node as the identifier for itself.
    * 
    * @param host
    * @param port
@@ -84,9 +79,8 @@ public class Peer implements Node {
       Peer node = new Peer( InetAddress.getLocalHost().getHostName(),
           serverSocket.getLocalPort() );
 
-      node.discoveryConnection = ConnectionUtilities.registerNode( node,
-          Constants.peer_ID, Properties.discovery_HOST,
-          Integer.valueOf( Properties.discovery_PORT ) );
+      node.discoveryConnection = node.registerPeer( Properties.DISCOVERY_HOST,
+          Integer.valueOf( Properties.DISCOVERY_PORT ) );
 
       node.interact();
     } catch ( IOException e )
@@ -95,6 +89,10 @@ public class Peer implements Node {
           "Unable to successfully start peer. Exiting. " + e.getMessage() );
       System.exit( 1 );
     }
+  }
+
+  private TCPConnection registerPeer(String discoveryHost, Integer valueOf) {
+    return null;
   }
 
   /**
@@ -117,9 +115,6 @@ public class Peer implements Node {
           break;
 
         case EXIT :
-          ConnectionUtilities.unregisterNode( this, Constants.peer_ID,
-              discoveryConnection );
-          running = false;
           break;
 
         case HELP :
