@@ -6,12 +6,9 @@ import java.util.HashMap;
 import java.util.Map;
 import cs555.system.node.Node;
 import cs555.system.transport.TCPConnection;
-import cs555.system.wireformats.Protocol;
-import cs555.system.wireformats.RegisterRequest;
 
 /**
- * Shared connection utilities between the discovery and peer / chunk
- * servers.
+ * Shared connection utilities between the discovery, peer, and store.
  * 
  * @author stock
  *
@@ -22,19 +19,16 @@ public class ConnectionUtilities {
 
   private final Map<String, TCPConnection> temporaryConnections;
 
-  private final StringBuilder connectionStringBuilder;
-
   /**
    * Default constructor -
    * 
    */
   public ConnectionUtilities() {
     this.temporaryConnections = new HashMap<>();
-    this.connectionStringBuilder = new StringBuilder();
   }
 
   /**
-   * Either establish a new or retrieve a cached connection made
+   * O Either establish a new or retrieve a cached connection made
    * previously.
    * 
    * @param startConnection true to start the TCP Receiver Thread, false
@@ -46,9 +40,8 @@ public class ConnectionUtilities {
    */
   public TCPConnection cacheConnection(Node node, String[] address,
       boolean startConnection) throws NumberFormatException, IOException {
-    String connectionDetails = connectionStringBuilder.append( address[ 0 ] )
+    String connectionDetails = ( new StringBuilder() ).append( address[ 0 ] )
         .append( ":" ).append( address[ 1 ] ).toString();
-    connectionStringBuilder.setLength( 0 );
 
     TCPConnection connection;
     if ( temporaryConnections.containsKey( connectionDetails ) )

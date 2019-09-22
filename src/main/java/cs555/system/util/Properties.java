@@ -12,9 +12,10 @@ public interface Properties {
   final String DISCOVERY_HOST =
       Configurations.getInstance().getProperty( "discovery.host" );
 
-  final String DISCOVERY_PORT =
-      Configurations.getInstance().getProperty( "discovery.port" );
+  final int DISCOVERY_PORT = Integer
+      .parseInt( Configurations.getInstance().getProperty( "discovery.port" ) );
 
-  final String SYSTEM_LOG_LEVEL = 
+  final String SYSTEM_LOG_LEVEL =
       Configurations.getInstance().getProperty( "system.log.level", "INFO" );
+
 }

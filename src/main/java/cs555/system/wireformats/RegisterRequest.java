@@ -22,9 +22,9 @@ public class RegisterRequest implements Event {
 
   private int type;
 
-  private int identifier;
+  private String identifier;
 
-  private String ipAddress;
+  private String host;
 
   private int port;
 
@@ -32,14 +32,14 @@ public class RegisterRequest implements Event {
    * Default constructor - create a new register or unregister message.
    * 
    * @param type Specified for use of register or unregister message.
-   * @param identifier to distinguish between a chunk server and a peer.
-   * @param ipAddress
+   * @param identifier
+   * @param host
    * @param port
    */
-  public RegisterRequest(int type, int identifier, String ipAddress, int port) {
+  public RegisterRequest(int type, String identifier, String host, int port) {
     this.type = type;
     this.identifier = identifier;
-    this.ipAddress = ipAddress;
+    this.host = host;
     this.port = port;
   }
 
@@ -58,13 +58,17 @@ public class RegisterRequest implements Event {
 
     this.type = din.readInt();
 
-    this.identifier = din.readInt();
-
     int len = din.readInt();
-    byte[] ipBytes = new byte[ len ];
-    din.readFully( ipBytes );
+    byte[] bytes = new byte[ len ];
+    din.readFully( bytes );
 
-    this.ipAddress = new String( ipBytes );
+    this.identifier = new String( bytes );
+
+    len = din.readInt();
+    bytes = new byte[ len ];
+    din.readFully( bytes );
+
+    this.host = new String( bytes );
 
     this.port = din.readInt();
 
@@ -81,6 +85,40 @@ public class RegisterRequest implements Event {
   }
 
   /**
+   * Converts the IP Address and Port to a readable format.
+   * 
+   * @return Returns a string in the format <code>host:port</code>
+   */
+  public String getConnection() {
+    return this.host + ":" + this.port;
+  }
+  
+  /**
+   * 
+   * @return the host address from the connection
+   */
+  public String getHost() {
+    return this.host;
+  }
+  
+  /**
+   * 
+   * @return the port number from the connection
+   */
+  public int getPort() {
+    return this.port;
+  }
+
+  /**
+   * Retrieve the identifier for the discovery message.
+   * 
+   * @return a <tt>String</tt> of the unique identifier
+   */
+  public String getIdentifier() {
+    return this.identifier;
+  }
+
+  /**
    * {@inheritDoc}
    */
   @Override
@@ -92,11 +130,13 @@ public class RegisterRequest implements Event {
 
     dout.writeInt( type );
 
-    dout.writeInt( identifier );
+    byte[] identifierBytes = identifier.getBytes();
+    dout.writeInt( identifierBytes.length );
+    dout.write( identifierBytes );
 
-    byte[] ipBytes = ipAddress.getBytes();
-    dout.writeInt( ipBytes.length );
-    dout.write( ipBytes );
+    byte[] hostBytes = host.getBytes();
+    dout.writeInt( hostBytes.length );
+    dout.write( hostBytes );
 
     dout.writeInt( port );
 
@@ -113,24 +153,6 @@ public class RegisterRequest implements Event {
    */
   @Override
   public String toString() {
-    return Integer.toString( this.type ) + " " + this.getConnection();
-  }
-
-  /**
-   * Converts the IP Address and Port to a readable format.
-   * 
-   * @return Returns a string in the format <code>host:port</code>
-   */
-  public String getConnection() {
-    return this.ipAddress + ":" + Integer.toString( this.port );
-  }
-
-  /**
-   * Retrieve the identifier for the discovery message.
-   * 
-   * @return integer representing the id
-   */
-  public int getIdentifier() {
-    return this.identifier;
+    return type + " " + this.getConnection();
   }
 }

@@ -6,9 +6,15 @@ import java.net.ServerSocket;
 import java.util.Date;
 import java.util.Scanner;
 import cs555.system.transport.TCPConnection;
+import cs555.system.transport.TCPServerThread;
+import cs555.system.util.ConnectionUtilities;
+import cs555.system.util.IdentifierUtilities;
 import cs555.system.util.Logger;
 import cs555.system.util.Properties;
+import cs555.system.wireformats.DiscoverNodeResponse;
 import cs555.system.wireformats.Event;
+import cs555.system.wireformats.Protocol;
+import cs555.system.wireformats.RegisterRequest;
 
 /**
  *
@@ -25,7 +31,7 @@ public class Peer implements Node {
 
   private static final String LIST = "list";
 
-  private TCPConnection discoveryConnection;
+  private String identifier;
 
   private final String host;
 
@@ -60,14 +66,6 @@ public class Peer implements Node {
   }
 
   /**
-   * 
-   * @return the connection to the discovery
-   */
-  public TCPConnection getdiscoveryConnection() {
-    return this.discoveryConnection;
-  }
-
-  /**
    * Initialize the peer with the discovery.
    *
    * @param args
@@ -79,9 +77,10 @@ public class Peer implements Node {
       Peer node = new Peer( InetAddress.getLocalHost().getHostName(),
           serverSocket.getLocalPort() );
 
-      node.discoveryConnection = node.registerPeer( Properties.DISCOVERY_HOST,
-          Integer.valueOf( Properties.DISCOVERY_PORT ) );
+      ( new Thread( new TCPServerThread( node, serverSocket ),
+          "Server Thread" ) ).start();
 
+      node.discoverConnection( args );
       node.interact();
     } catch ( IOException e )
     {
@@ -91,8 +90,30 @@ public class Peer implements Node {
     }
   }
 
-  private TCPConnection registerPeer(String discoveryHost, Integer valueOf) {
-    return null;
+  private void discoverConnection(String[] args) throws IOException {
+    TCPConnection connection = ConnectionUtilities.establishConnection( this,
+        Properties.DISCOVERY_HOST, Properties.DISCOVERY_PORT );
+    connection.start();
+
+    if ( args.length > 0 )
+    {
+      try
+      {
+        identifier = String.format( "%04X",
+            ( 0xFFFF & Integer.parseInt( args[ 0 ], 16 ) ) );
+      } catch ( NumberFormatException e )
+      {
+        identifier = IdentifierUtilities.timestampToIdentifier();
+      }
+    } else
+    {
+      identifier = IdentifierUtilities.timestampToIdentifier();
+    }
+
+    RegisterRequest request = new RegisterRequest( Protocol.REGISTER_REQUEST,
+        identifier, this.getHost(), this.getPort() );
+
+    connection.getTCPSender().sendData( request.getBytes() );
   }
 
   /**
@@ -137,10 +158,48 @@ public class Peer implements Node {
    */
   @Override
   public void onEvent(Event event, TCPConnection connection) {
-    LOG.debug( event.toString() );
+    // LOG.debug( event.toString() );
     switch ( event.getType() )
     {
+      case Protocol.DISCOVER_NODE_RESPONSE :
+        disvoverNodeHandler( event, connection );
+        break;
 
+      case Protocol.IDENTIFIER_COLLISION :
+        try
+        {
+          discoverConnection( new String[ 0 ] );
+        } catch ( IOException e )
+        {
+          LOG.info( "Unable to discover a new connection. " + e.getMessage() );
+          e.printStackTrace();
+        }
+        break;
+    }
+  }
+
+  /**
+   * 
+   * @param event
+   * @param connection
+   */
+  private void disvoverNodeHandler(Event event, TCPConnection connection) {
+    DiscoverNodeResponse response = ( DiscoverNodeResponse ) event;
+    if ( response.isInitialPeerConnection() )
+    {
+      LOG.info( "Peer is the first connection in the system." );
+    } else
+    {
+      LOG.info( "Successfully registered peer with the Discovery node." );
+      // TODO: send message to peer
+    }
+    try
+    {
+      connection.close();
+    } catch ( IOException | InterruptedException e )
+    {
+      LOG.info( "Unable to close the connection witht he Discovery node" );
+      e.printStackTrace();
     }
   }
 

@@ -15,6 +15,10 @@ public interface Protocol {
 
   final int UNREGISTER_REQUEST = 2;
 
-  final int HEALTH_REQUEST = 14;
+  final int IDENTIFIER_COLLISION = 3;
+  
+  final int DISCOVER_NODE_REQUEST = 4;
 
+  final int DISCOVER_NODE_RESPONSE = 5;
+  
 }
