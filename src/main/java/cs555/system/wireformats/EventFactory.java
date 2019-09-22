@@ -40,7 +40,7 @@ public class EventFactory {
   public Object clone() throws CloneNotSupportedException {
     throw new CloneNotSupportedException();
   }
-  
+
   /**
    * Create a new event, i.e., wireformat object from the marshalled
    * bytes of said object.
@@ -54,13 +54,18 @@ public class EventFactory {
     switch ( ByteBuffer.wrap( marshalledBytes ).getInt() )
     {
       case Protocol.REGISTER_REQUEST :
+      case Protocol.UNREGISTER_REQUEST :
         return new RegisterRequest( marshalledBytes );
 
       case Protocol.REGISTER_RESPONSE :
         return new RegisterResponse( marshalledBytes );
 
-      case Protocol.UNREGISTER_REQUEST :
-        return new RegisterRequest( marshalledBytes );
+      case Protocol.IDENTIFIER_COLLISION :
+      case Protocol.DISCOVER_NODE_REQUEST :
+        return new GenericMessage( marshalledBytes );
+
+      case Protocol.DISCOVER_NODE_RESPONSE :
+        return new DiscoverNodeResponse( marshalledBytes );
 
       default :
         LOG.error( "Event could not be created. "

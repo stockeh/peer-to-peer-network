@@ -13,16 +13,16 @@ import java.io.IOException;
  * @author stock
  *
  */
-public class HealthRequest implements Event {
+public class GenericMessage implements Event {
 
   private int type;
 
   /**
-   * Default constructor - 
+   * Default constructor -
    * 
    */
-  public HealthRequest() {
-    this.type = Protocol.HEALTH_REQUEST;
+  public GenericMessage(int type) {
+    this.type = type;
   }
 
   /**
@@ -32,7 +32,7 @@ public class HealthRequest implements Event {
    * @param marshalledBytes is the byte array of the class.
    * @throws IOException
    */
-  public HealthRequest(byte[] marshalledBytes) throws IOException {
+  public GenericMessage(byte[] marshalledBytes) throws IOException {
     ByteArrayInputStream inputStream =
         new ByteArrayInputStream( marshalledBytes );
     DataInputStream din =
@@ -74,7 +74,7 @@ public class HealthRequest implements Event {
 
   @Override
   public String toString() {
-    return "\n" + Integer.toString( type );
+    return "\n" + type;
   }
 
 }
