@@ -67,6 +67,8 @@ public class EventFactory {
       case Protocol.DISCOVER_NODE_RESPONSE :
         return new DiscoverNodeResponse( marshalledBytes );
 
+      case Protocol.PEER_INITIALIZE_LOCATION :
+        return new PeerInitializeLocation( marshalledBytes );
       default :
         LOG.error( "Event could not be created. "
             + ByteBuffer.wrap( marshalledBytes ).getInt() );

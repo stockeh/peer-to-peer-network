@@ -5,6 +5,7 @@ import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.util.Date;
 import java.util.Scanner;
+import cs555.system.metadata.PeerMetadata;
 import cs555.system.transport.TCPConnection;
 import cs555.system.transport.TCPServerThread;
 import cs555.system.util.ConnectionUtilities;
@@ -29,13 +30,8 @@ public class Peer implements Node {
 
   private static final String HELP = "help";
 
-  private static final String LIST = "list";
+  private final PeerMetadata metadata;
 
-  private String identifier;
-
-  private final String host;
-
-  private final int port;
 
   /**
    * Default constructor - creates a new peer tying the <b>host:port</b>
@@ -45,25 +41,9 @@ public class Peer implements Node {
    * @param port
    */
   private Peer(String host, int port) {
-    this.host = host;
-    this.port = port;
+    this.metadata = new PeerMetadata( host, port );
   }
 
-  /**
-   * {@inheritDoc}
-   */
-  @Override
-  public String getHost() {
-    return this.host;
-  }
-
-  /**
-   * {@inheritDoc}
-   */
-  @Override
-  public int getPort() {
-    return this.port;
-  }
 
   /**
    * Initialize the peer with the discovery.
@@ -99,19 +79,19 @@ public class Peer implements Node {
     {
       try
       {
-        identifier = String.format( "%04X",
-            ( 0xFFFF & Integer.parseInt( args[ 0 ], 16 ) ) );
+        metadata.setIdentifier( String.format( "%04X",
+            ( 0xFFFF & Integer.parseInt( args[ 0 ], 16 ) ) ) );
       } catch ( NumberFormatException e )
       {
-        identifier = IdentifierUtilities.timestampToIdentifier();
+        metadata.setIdentifier( IdentifierUtilities.timestampToIdentifier() );
       }
     } else
     {
-      identifier = IdentifierUtilities.timestampToIdentifier();
+      metadata.setIdentifier( IdentifierUtilities.timestampToIdentifier() );
     }
-
     RegisterRequest request = new RegisterRequest( Protocol.REGISTER_REQUEST,
-        identifier, this.getHost(), this.getPort() );
+        metadata.self().getIdentifier(), metadata.self().getHost(),
+        metadata.self().getPort() );
 
     connection.getTCPSender().sendData( request.getBytes() );
   }
@@ -132,9 +112,6 @@ public class Peer implements Node {
       String[] input = scan.nextLine().toLowerCase().split( "\\s+" );
       switch ( input[ 0 ] )
       {
-        case LIST :
-          break;
-
         case EXIT :
           break;
 
@@ -149,7 +126,8 @@ public class Peer implements Node {
           break;
       }
     }
-    LOG.info( host + ":" + port + " has unregistered and is terminating." );
+    LOG.info( metadata.self().getHost() + ":" + metadata.self().getPort()
+        + " has unregistered and is terminating." );
     System.exit( 0 );
   }
 
@@ -188,17 +166,19 @@ public class Peer implements Node {
     if ( response.isInitialPeerConnection() )
     {
       LOG.info( "Peer is the first connection in the system." );
+      metadata.addSelfToTable();
+      metadata.table().display();
     } else
     {
-      LOG.info( "Successfully registered peer with the Discovery node." );
-      // TODO: send message to peer
+      LOG.info( "Successfully registered peer ( " + metadata.self().toString()
+          + " ) with Discovery." );
     }
     try
     {
       connection.close();
     } catch ( IOException | InterruptedException e )
     {
-      LOG.info( "Unable to close the connection witht he Discovery node" );
+      LOG.info( "Unable to close the connection with the Discovery node" );
       e.printStackTrace();
     }
   }
@@ -207,10 +187,6 @@ public class Peer implements Node {
    * Display a help message for how to interact with the application.
    * 
    */
-  private void displayHelp() {
-    System.out.println( "\n\t" + EXIT + "\n\n\t" + LIST
-        + "\t: list readable files stored on the chunk servers." + "\n\n\t"
-        + LIST + "\' input.\n" );
-  }
+  private void displayHelp() {}
 
 }

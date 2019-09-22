@@ -4,9 +4,9 @@ import cs555.system.transport.TCPConnection;
 import cs555.system.wireformats.Event;
 
 /**
- * Interface for the chunk server, peer and discovery, so
- * underlying communication is indistinguishable, i.e., Nodes send
- * messages to Nodes.
+ * Interface for the chunk server, peer and discovery, so underlying
+ * communication is indistinguishable, i.e., Nodes send messages to
+ * Nodes.
  * 
  * @author stock
  *
@@ -22,17 +22,4 @@ public interface Node {
    */
   public void onEvent(Event event, TCPConnection connection);
 
-  /**
-   * Host the node has been started on.
-   * 
-   * @return host
-   */
-  public String getHost();
-
-  /**
-   * Port the node has been starting on.
-   * 
-   * @return port
-   */
-  public int getPort();
 }

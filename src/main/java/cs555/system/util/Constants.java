@@ -11,4 +11,6 @@ public interface Constants {
 
   final byte SUCCESS = ( byte ) 1;
 
+  final int IDENTIFIER_BIT_LENGTH = 16;
+  
 }
