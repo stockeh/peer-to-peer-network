@@ -8,6 +8,8 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import cs555.system.metadata.PeerInformation;
+import cs555.system.util.Constants;
+import cs555.system.util.MessageUtilities;
 
 /**
  * 
@@ -20,13 +22,19 @@ public class PeerInitializeLocation implements Event {
 
   private PeerInformation destination;
 
+  private PeerInformation[][] table;
+
+  private int rowIndex;
+
   /**
    * Default constructor -
    * 
    */
-  public PeerInitializeLocation(PeerInformation destination) {
+  public PeerInitializeLocation(PeerInformation destination, int rowIndex) {
     this.type = Protocol.PEER_INITIALIZE_LOCATION;
+    this.table = new PeerInformation[ Constants.NUMBER_OF_ROWS ][];
     this.destination = destination;
+    this.rowIndex = rowIndex;
   }
 
   /**
@@ -44,6 +52,10 @@ public class PeerInitializeLocation implements Event {
 
     this.type = din.readInt();
 
+    this.destination = MessageUtilities.readPeerInformation( din );
+
+    this.rowIndex = din.readInt();
+
     inputStream.close();
     din.close();
   }
@@ -54,6 +66,22 @@ public class PeerInitializeLocation implements Event {
   @Override
   public int getType() {
     return type;
+  }
+
+  public PeerInformation getDestination() {
+    return destination;
+  }
+
+  public int getRowIndex() {
+    return rowIndex;
+  }
+  
+  public void incrementRowIndex() {
+    ++rowIndex;
+  }
+
+  public void setTableRow(PeerInformation[] row) {
+    table[ rowIndex ] = row;
   }
 
   /**
@@ -67,6 +95,11 @@ public class PeerInitializeLocation implements Event {
         new DataOutputStream( new BufferedOutputStream( outputStream ) );
 
     dout.writeInt( type );
+
+    MessageUtilities.writePeerInformation( dout, destination );
+
+
+    dout.writeInt( rowIndex );
 
     dout.flush();
     marshalledBytes = outputStream.toByteArray();

@@ -7,6 +7,8 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import cs555.system.metadata.PeerInformation;
+import cs555.system.util.MessageUtilities;
 
 /**
  * Register message type to initialize itself with another node.
@@ -22,11 +24,7 @@ public class RegisterRequest implements Event {
 
   private int type;
 
-  private String identifier;
-
-  private String host;
-
-  private int port;
+  private PeerInformation peer;
 
   /**
    * Default constructor - create a new register or unregister message.
@@ -36,11 +34,9 @@ public class RegisterRequest implements Event {
    * @param host
    * @param port
    */
-  public RegisterRequest(int type, String identifier, String host, int port) {
+  public RegisterRequest(int type, PeerInformation peer) {
     this.type = type;
-    this.identifier = identifier;
-    this.host = host;
-    this.port = port;
+    this.peer = peer;
   }
 
   /**
@@ -58,19 +54,7 @@ public class RegisterRequest implements Event {
 
     this.type = din.readInt();
 
-    int len = din.readInt();
-    byte[] bytes = new byte[ len ];
-    din.readFully( bytes );
-
-    this.identifier = new String( bytes );
-
-    len = din.readInt();
-    bytes = new byte[ len ];
-    din.readFully( bytes );
-
-    this.host = new String( bytes );
-
-    this.port = din.readInt();
+    this.peer = MessageUtilities.readPeerInformation( din );
 
     inputStream.close();
     din.close();
@@ -90,23 +74,23 @@ public class RegisterRequest implements Event {
    * @return Returns a string in the format <code>host:port</code>
    */
   public String getConnection() {
-    return this.host + ":" + this.port;
+    return peer.getHost() + ":" + peer.getPort();
   }
-  
+
   /**
    * 
    * @return the host address from the connection
    */
   public String getHost() {
-    return this.host;
+    return peer.getHost();
   }
-  
+
   /**
    * 
    * @return the port number from the connection
    */
   public int getPort() {
-    return this.port;
+    return peer.getPort();
   }
 
   /**
@@ -115,7 +99,7 @@ public class RegisterRequest implements Event {
    * @return a <tt>String</tt> of the unique identifier
    */
   public String getIdentifier() {
-    return this.identifier;
+    return peer.getIdentifier();
   }
 
   /**
@@ -130,15 +114,7 @@ public class RegisterRequest implements Event {
 
     dout.writeInt( type );
 
-    byte[] identifierBytes = identifier.getBytes();
-    dout.writeInt( identifierBytes.length );
-    dout.write( identifierBytes );
-
-    byte[] hostBytes = host.getBytes();
-    dout.writeInt( hostBytes.length );
-    dout.write( hostBytes );
-
-    dout.writeInt( port );
+    MessageUtilities.writePeerInformation( dout, peer );
 
     dout.flush();
     marshalledBytes = outputStream.toByteArray();

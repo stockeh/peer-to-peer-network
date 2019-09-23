@@ -41,7 +41,7 @@ public class PeerMetadata {
   public PeerInformation self() {
     return self;
   }
-  
+
   /**
    * 
    * @return the distributed hash table
@@ -83,7 +83,7 @@ public class PeerMetadata {
    * 
    */
   public void addSelfToTable() {
-    for ( int i = 0; i < RoutingTable.NUM_ROWS; i++ )
+    for ( int i = 0; i < Constants.NUMBER_OF_ROWS; i++ )
     {
       table.addPeerToTable( self, i );
     }

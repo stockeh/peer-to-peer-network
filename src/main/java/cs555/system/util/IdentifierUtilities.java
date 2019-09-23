@@ -90,4 +90,18 @@ public class IdentifierUtilities {
     }
     return String.format( "%04X", ( 0xFFFF & crc ) );
   }
+
+  /**
+   * Compare a source identifier with that of an item.
+   * 
+   * @param source
+   * @param item
+   * @param index
+   * @return 0 if they are same, otherwise the value of the item index
+   */
+  public static int compareIdentifiers(String source, String item, int index) {
+    int a = Character.digit( source.charAt( index ), 16 );
+    int b = Character.digit( item.charAt( index ), 16 );
+    return ( a - b == 0 ) ? 0 : b;
+  }
 }

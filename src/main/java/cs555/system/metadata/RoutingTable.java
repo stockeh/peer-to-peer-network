@@ -10,8 +10,6 @@ import cs555.system.util.Constants;
  */
 public class RoutingTable {
 
-  protected final static short NUM_ROWS = Constants.IDENTIFIER_BIT_LENGTH / 4;
-
   private PeerInformation[][] table;
 
   /**
@@ -19,19 +17,37 @@ public class RoutingTable {
    * 
    */
   protected RoutingTable() {
-    this.table = new PeerInformation[ NUM_ROWS ][ 16 ];
+    this.table = new PeerInformation[ Constants.NUMBER_OF_ROWS ][ 16 ];
   }
 
   /**
    * 
    * @param row
    */
-  public void addTableRow(PeerInformation[] row) {
+  public void addTableRow(PeerInformation[] row, int index) {
 
   }
 
   /**
    * 
+   * @param index
+   * @return
+   */
+  public PeerInformation[] getTableRow(int index) {
+    return table[ index ];
+  }
+
+  /**
+   * 
+   * @param row
+   * @param col
+   * @return
+   */
+  public PeerInformation getTableIndex(int row, int col) {
+    return table[ row ][ col ];
+  }
+
+  /**
    * 
    * @param peer
    * @param row
@@ -49,7 +65,7 @@ public class RoutingTable {
     String lineSeparator = new String( new char[ 110 ] ).replace( "\0", "-" );
     System.out.println( "\n" + lineSeparator );
     StringBuilder sb = new StringBuilder();
-    for ( int i = 0; i < NUM_ROWS; i++ )
+    for ( int i = 0; i < Constants.NUMBER_OF_ROWS; i++ )
     {
       for ( PeerInformation peer : table[ i ] )
       {

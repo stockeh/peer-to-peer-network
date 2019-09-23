@@ -5,15 +5,18 @@ import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.util.Date;
 import java.util.Scanner;
+import cs555.system.metadata.PeerInformation;
 import cs555.system.metadata.PeerMetadata;
 import cs555.system.transport.TCPConnection;
 import cs555.system.transport.TCPServerThread;
 import cs555.system.util.ConnectionUtilities;
+import cs555.system.util.Constants;
 import cs555.system.util.IdentifierUtilities;
 import cs555.system.util.Logger;
 import cs555.system.util.Properties;
 import cs555.system.wireformats.DiscoverNodeResponse;
 import cs555.system.wireformats.Event;
+import cs555.system.wireformats.PeerInitializeLocation;
 import cs555.system.wireformats.Protocol;
 import cs555.system.wireformats.RegisterRequest;
 
@@ -30,6 +33,8 @@ public class Peer implements Node {
 
   private static final String HELP = "help";
 
+  private final ConnectionUtilities connections;
+
   private final PeerMetadata metadata;
 
 
@@ -42,6 +47,7 @@ public class Peer implements Node {
    */
   private Peer(String host, int port) {
     this.metadata = new PeerMetadata( host, port );
+    this.connections = new ConnectionUtilities();
   }
 
 
@@ -89,9 +95,8 @@ public class Peer implements Node {
     {
       metadata.setIdentifier( IdentifierUtilities.timestampToIdentifier() );
     }
-    RegisterRequest request = new RegisterRequest( Protocol.REGISTER_REQUEST,
-        metadata.self().getIdentifier(), metadata.self().getHost(),
-        metadata.self().getPort() );
+    RegisterRequest request =
+        new RegisterRequest( Protocol.REGISTER_REQUEST, metadata.self() );
 
     connection.getTCPSender().sendData( request.getBytes() );
   }
@@ -153,10 +158,108 @@ public class Peer implements Node {
           e.printStackTrace();
         }
         break;
+
+      case Protocol.PEER_INITIALIZE_LOCATION :
+        peerInitializeHandler( event, connection );
+        break;
     }
   }
 
   /**
+   * 
+   * @param event
+   * @param connection
+   */
+  private void peerInitializeHandler(Event event, TCPConnection connection) {
+    PeerInitializeLocation request = ( PeerInitializeLocation ) event;
+
+    PeerInformation destination = request.getDestination();
+    if ( metadata.self().equals( destination ) )
+    {
+      initializeDHT( request );
+      return;
+    }
+
+    int inital = request.getRowIndex();
+    PeerInformation peer = traversePrefix( request );
+    if ( peer == null )
+    {
+      // TODO: set leaf nodes
+    } else if ( peer.equals( metadata.self() ) )
+    {
+      request
+          .setTableRow( metadata.table().getTableRow( request.getRowIndex() ) );
+    } else
+    {
+      // TODO: establish connection with peer
+    }
+
+    if ( request.getRowIndex() == Constants.NUMBER_OF_ROWS )
+    {
+      try
+      {
+
+        if ( inital == 0 )
+        {
+          connection.getTCPSender().sendData( request.getBytes() );
+        } else
+        {
+          TCPConnection destinationConnection =
+              ConnectionUtilities.establishConnection( this,
+                  destination.getHost(), destination.getPort() );
+          destinationConnection.getTCPSender().sendData( request.getBytes() );
+        }
+      } catch ( IOException e )
+      {
+        LOG.error( "Unable to send message to source node. " + e.getMessage() );
+        e.printStackTrace();
+      }
+    }
+  }
+
+  private PeerInformation traversePrefix(PeerInitializeLocation request) {
+    int row = request.getRowIndex();
+    request.setTableRow( metadata.table().getTableRow( row ) );
+    if ( row == Constants.NUMBER_OF_ROWS )
+    {
+      return null;
+    }
+    int selfCol =
+        Character.digit( metadata.self().getIdentifier().charAt( row ), 16 );
+    int destCol = Character
+        .digit( request.getDestination().getIdentifier().charAt( row ), 16 );
+
+    if ( selfCol == destCol )
+    {
+      request.incrementRowIndex();
+      return traversePrefix( request );
+    }
+
+    for ( int i = 1; i < 8; ++i )
+    {
+      PeerInformation peer = metadata.table().getTableIndex( row,
+          Math.floorMod( destCol + 1, 16 ) );
+      if ( peer != null )
+      {
+        request.incrementRowIndex();
+        return peer;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * 
+   * @param request
+   */
+  private void initializeDHT(PeerInitializeLocation request) {
+
+  }
+
+
+  /**
+   * Connect with Discovery to find a source node for entering the
+   * network.
    * 
    * @param event
    * @param connection
@@ -172,13 +275,29 @@ public class Peer implements Node {
     {
       LOG.info( "Successfully registered peer ( " + metadata.self().toString()
           + " ) with Discovery." );
+      PeerInformation source = response.getSourceInformation();
+      LOG.info(
+          "Connecting to the DHT through source node: " + source.toString() );
+      PeerInitializeLocation request =
+          new PeerInitializeLocation( metadata.self(), 0 );
+      try
+      {
+        TCPConnection sourceConnection =
+            connections.cacheConnection( this, source, true );
+        sourceConnection.getTCPSender().sendData( request.getBytes() );
+      } catch ( IOException e )
+      {
+        LOG.error( "Unable to send message to source node. " + e.getMessage() );
+        e.printStackTrace();
+      }
     }
     try
     {
       connection.close();
     } catch ( IOException | InterruptedException e )
     {
-      LOG.info( "Unable to close the connection with the Discovery node" );
+      LOG.error( "Unable to close the connection with the Discovery node. "
+          + e.getMessage() );
       e.printStackTrace();
     }
   }

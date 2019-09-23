@@ -173,8 +173,8 @@ public class Discovery implements Node {
     } else
     {
       int index = ThreadLocalRandom.current().nextInt( numberOfNodes );
-      PeerInformation info = registeredNodes.get( index );
-      response = new DiscoverNodeResponse( info.getHost(), info.getPort() );
+      PeerInformation source = registeredNodes.get( index );
+      response = new DiscoverNodeResponse( source );
     }
     try
     {
