@@ -6,6 +6,8 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Scanner;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadLocalRandom;
 import cs555.system.metadata.PeerInformation;
 import cs555.system.transport.TCPConnection;
@@ -53,8 +55,10 @@ public class Discovery implements Node {
         new ServerSocket( Properties.DISCOVERY_PORT ) )
     {
       Discovery discovery = new Discovery();
+      ExecutorService executorService = Executors.newFixedThreadPool( 1 );
 
-      ( new Thread( new TCPServerThread( discovery, serverSocket ),
+      ( new Thread(
+          new TCPServerThread( discovery, serverSocket, executorService ),
           "Server Thread" ) ).start();
 
       discovery.interact();
@@ -142,6 +146,7 @@ public class Discovery implements Node {
         connection.getTCPSender()
             .sendData( ( new GenericMessage( Protocol.IDENTIFIER_COLLISION ) )
                 .getBytes() );
+        LOG.debug( "MSG SEND to Peer" );
       } catch ( IOException e )
       {
         LOG.error(

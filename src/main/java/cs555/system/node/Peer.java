@@ -5,6 +5,8 @@ import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.util.Date;
 import java.util.Scanner;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import cs555.system.metadata.PeerInformation;
 import cs555.system.metadata.PeerMetadata;
 import cs555.system.transport.TCPConnection;
@@ -36,6 +38,8 @@ public class Peer implements Node {
 
   private final PeerMetadata metadata;
 
+  private ExecutorService executorService;
+
 
   /**
    * Default constructor - creates a new peer tying the <b>host:port</b>
@@ -46,7 +50,8 @@ public class Peer implements Node {
    */
   private Peer(String host, int port) {
     this.metadata = new PeerMetadata( host, port );
-    this.connections = new ConnectionUtilities();
+    this.executorService = Executors.newFixedThreadPool( 2 );
+    this.connections = new ConnectionUtilities( executorService );
   }
 
   /**
@@ -61,10 +66,11 @@ public class Peer implements Node {
       Peer node = new Peer( InetAddress.getLocalHost().getHostName(),
           serverSocket.getLocalPort() );
 
-      ( new Thread( new TCPServerThread( node, serverSocket ),
+      ( new Thread(
+          new TCPServerThread( node, serverSocket, node.executorService ),
           "Server Thread" ) ).start();
 
-      node.discoverConnection( args );
+      node.discoverConnection( args, null );
       node.interact();
     } catch ( IOException e )
     {
@@ -74,11 +80,20 @@ public class Peer implements Node {
     }
   }
 
-  private void discoverConnection(String[] args) throws IOException {
-    TCPConnection connection = ConnectionUtilities.establishConnection( this,
-        Properties.DISCOVERY_HOST, Properties.DISCOVERY_PORT );
-    connection.start();
-
+  /**
+   * 
+   * @param args
+   * @param connection
+   * @throws IOException
+   */
+  private void discoverConnection(String[] args, TCPConnection connection)
+      throws IOException {
+    if ( connection == null )
+    {
+      connection = ConnectionUtilities.establishConnection( this,
+          Properties.DISCOVERY_HOST, Properties.DISCOVERY_PORT );
+      connection.submitTo( executorService );
+    }
     if ( args.length > 0 )
     {
       try
@@ -95,13 +110,15 @@ public class Peer implements Node {
     }
     RegisterRequest request =
         new RegisterRequest( Protocol.REGISTER_REQUEST, metadata.self() );
-
+    LOG.debug( "HERE1" );
     connection.getTCPSender().sendData( request.getBytes() );
+    LOG.debug( "HERE2" );
   }
 
   /**
    * Allow support for commands to be specified while the processes are
    * running.
+   * 
    */
   private void interact() {
     System.out.println(
@@ -149,7 +166,7 @@ public class Peer implements Node {
       case Protocol.IDENTIFIER_COLLISION :
         try
         {
-          discoverConnection( new String[ 0 ] );
+          discoverConnection( new String[ 0 ], connection );
         } catch ( IOException e )
         {
           LOG.info( "Unable to discover a new connection. " + e.getMessage() );
@@ -158,7 +175,8 @@ public class Peer implements Node {
         break;
 
       case Protocol.PEER_INITIALIZE_LOCATION :
-        peerInitializeHandler( event, connection );
+        // peerInitializeHandler( event, connection );
+        LOG.debug( "HEREEE3" );
         break;
     }
   }
@@ -294,6 +312,7 @@ public class Peer implements Node {
         e.printStackTrace();
       }
     }
+    LOG.debug( "Closing Connection" );
     try
     {
       connection.close();

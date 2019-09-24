@@ -2,7 +2,7 @@ package cs555.system.transport;
 
 import java.io.IOException;
 import java.net.Socket;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.ExecutorService;
 import cs555.system.node.Node;
 
 /**
@@ -44,8 +44,8 @@ public class TCPConnection {
   }
 
   /**
-   * Get the TCPSender so the peer or server can send a message over
-   * the socket
+   * Get the TCPSender so the peer or server can send a message over the
+   * socket
    * 
    * @return the TCPSender instance that was instantiated during the
    *         {@link #run()} method of the new thread.
@@ -57,22 +57,21 @@ public class TCPConnection {
   /**
    * Allow the TCPConnection to start receiving messages.
    * 
+   * @param executorService to submit the receiver to
    */
-  public void start() {
-    ( new Thread( this.receiver ) ).start();
+  public void submitTo(ExecutorService executorService) {
+    executorService.submit( this.receiver );
   }
 
   /**
-   * Close the socket sender and receiver. Use a one second wait to
-   * ensure all remaining messages are sent.
+   * Close the socket sender and receiver.
    * 
    * @throws IOException
    * @throws InterruptedException
    */
   public void close() throws IOException, InterruptedException {
-    TimeUnit.SECONDS.sleep( 1 );
-    this.socket.close();
     this.sender.dout.close();
     this.receiver.din.close();
+    this.socket.close();
   }
 }

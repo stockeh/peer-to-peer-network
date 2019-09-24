@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.net.Socket;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
 import cs555.system.metadata.PeerInformation;
 import cs555.system.node.Node;
 import cs555.system.transport.TCPConnection;
@@ -20,12 +21,17 @@ public class ConnectionUtilities {
 
   private final Map<String, TCPConnection> temporaryConnections;
 
+  private ExecutorService executorService;
+
   /**
    * Default constructor -
    * 
+   * @param executorService
+   * 
    */
-  public ConnectionUtilities() {
+  public ConnectionUtilities(ExecutorService executorService) {
     this.temporaryConnections = new HashMap<>();
+    this.executorService = executorService;
   }
 
   /**
@@ -36,7 +42,7 @@ public class ConnectionUtilities {
    * @param peer to connect to
    * @param startConnection true to start the TCP Receiver Thread, false
    *        otherwise
-   *        
+   * 
    * @return the cached TCP connection
    * @throws IOException
    * @throws NumberFormatException
@@ -55,7 +61,7 @@ public class ConnectionUtilities {
       temporaryConnections.put( peer.getIdentifier(), connection );
       if ( startConnection )
       {
-        connection.start();
+        connection.submitTo( executorService );
       }
     }
     return connection;
