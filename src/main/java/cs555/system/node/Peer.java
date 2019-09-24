@@ -10,7 +10,6 @@ import cs555.system.metadata.PeerMetadata;
 import cs555.system.transport.TCPConnection;
 import cs555.system.transport.TCPServerThread;
 import cs555.system.util.ConnectionUtilities;
-import cs555.system.util.Constants;
 import cs555.system.util.IdentifierUtilities;
 import cs555.system.util.Logger;
 import cs555.system.util.Properties;
@@ -49,7 +48,6 @@ public class Peer implements Node {
     this.metadata = new PeerMetadata( host, port );
     this.connections = new ConnectionUtilities();
   }
-
 
   /**
    * Initialize the peer with the discovery.
@@ -173,57 +171,29 @@ public class Peer implements Node {
   private void peerInitializeHandler(Event event, TCPConnection connection) {
     PeerInitializeLocation request = ( PeerInitializeLocation ) event;
 
-    PeerInformation destination = request.getDestination();
-    if ( metadata.self().equals( destination ) )
+    if ( metadata.self().equals( request.getDestination() ) )
     {
       initializeDHT( request );
       return;
-    }
-
-    int inital = request.getRowIndex();
-    PeerInformation peer = traversePrefix( request );
-    if ( peer == null )
-    {
-      // TODO: set leaf nodes
-    } else if ( peer.equals( metadata.self() ) )
-    {
-      request
-          .setTableRow( metadata.table().getTableRow( request.getRowIndex() ) );
     } else
     {
-      // TODO: establish connection with peer
-    }
-
-    if ( request.getRowIndex() == Constants.NUMBER_OF_ROWS )
-    {
+      boolean isFirstPeer = request.getRowIndex() == 0;
       try
       {
-
-        if ( inital == 0 )
-        {
-          connection.getTCPSender().sendData( request.getBytes() );
-        } else
-        {
-          TCPConnection destinationConnection =
-              ConnectionUtilities.establishConnection( this,
-                  destination.getHost(), destination.getPort() );
-          destinationConnection.getTCPSender().sendData( request.getBytes() );
-        }
+        traversePrefix( request, isFirstPeer, connection );
       } catch ( IOException e )
       {
-        LOG.error( "Unable to send message to source node. " + e.getMessage() );
         e.printStackTrace();
       }
     }
   }
 
-  private PeerInformation traversePrefix(PeerInitializeLocation request) {
+  private void traversePrefix(PeerInitializeLocation request,
+      boolean isFirstPeer, TCPConnection connection) throws IOException {
+
     int row = request.getRowIndex();
     request.setTableRow( metadata.table().getTableRow( row ) );
-    if ( row == Constants.NUMBER_OF_ROWS )
-    {
-      return null;
-    }
+
     int selfCol =
         Character.digit( metadata.self().getIdentifier().charAt( row ), 16 );
     int destCol = Character
@@ -232,20 +202,52 @@ public class Peer implements Node {
     if ( selfCol == destCol )
     {
       request.incrementRowIndex();
-      return traversePrefix( request );
-    }
-
-    for ( int i = 1; i < 8; ++i )
+      traversePrefix( request, isFirstPeer, connection );
+      return;
+    } else
     {
-      PeerInformation peer = metadata.table().getTableIndex( row,
-          Math.floorMod( destCol + 1, 16 ) );
+      PeerInformation peer = metadata.table().getTableIndex( row, destCol );
+
       if ( peer != null )
       {
-        request.incrementRowIndex();
-        return peer;
+        TCPConnection n = ConnectionUtilities.establishConnection( this,
+            peer.getHost(), peer.getPort() );
+        n.getTCPSender().sendData( request.getBytes() );
+      } else
+      { // assumes leaf set size is 2
+        for ( int i = 1; i < 16; ++i )
+        {
+          if ( request.getLeafSetByIndex( 1 ) == null )
+          {
+            PeerInformation right = metadata.table().getTableIndex( row,
+                Math.floorMod( destCol + 1, 16 ) );
+            if ( right != null )
+            {
+              request.setLeafSetIndex( right, 1 );
+            }
+          }
+          if ( request.getLeafSetByIndex( 0 ) == null )
+          {
+            PeerInformation left = metadata.table().getTableIndex( row,
+                Math.floorMod( destCol - 1, 16 ) );
+            if ( left != null )
+            {
+              request.setLeafSetIndex( left, 1 );
+            }
+          }
+        }
+        if ( isFirstPeer )
+        {
+          connection.getTCPSender().sendData( request.getBytes() );
+        } else
+        {
+          TCPConnection destination = ConnectionUtilities.establishConnection(
+              this, request.getDestination().getHost(),
+              request.getDestination().getPort() );
+          destination.getTCPSender().sendData( request.getBytes() );
+        }
       }
     }
-    return null;
   }
 
   /**
@@ -253,7 +255,8 @@ public class Peer implements Node {
    * @param request
    */
   private void initializeDHT(PeerInitializeLocation request) {
-
+    LOG.debug( "Initializing Peer" );
+    // TODO: clear cached connections after initializing
   }
 
 

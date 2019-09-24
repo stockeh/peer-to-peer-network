@@ -24,6 +24,8 @@ public class PeerInitializeLocation implements Event {
 
   private PeerInformation[][] table;
 
+  private PeerInformation[] leafSet;
+
   private int rowIndex;
 
   /**
@@ -32,8 +34,9 @@ public class PeerInitializeLocation implements Event {
    */
   public PeerInitializeLocation(PeerInformation destination, int rowIndex) {
     this.type = Protocol.PEER_INITIALIZE_LOCATION;
-    this.table = new PeerInformation[ Constants.NUMBER_OF_ROWS ][];
     this.destination = destination;
+    this.table = new PeerInformation[ Constants.NUMBER_OF_ROWS ][];
+    this.leafSet = new PeerInformation[ Constants.LEAF_SET_SIZE ];
     this.rowIndex = rowIndex;
   }
 
@@ -54,6 +57,34 @@ public class PeerInitializeLocation implements Event {
 
     this.destination = MessageUtilities.readPeerInformation( din );
 
+    this.table = new PeerInformation[ Constants.NUMBER_OF_ROWS ][];
+
+    for ( int row = 0; row < Constants.NUMBER_OF_ROWS; ++row )
+    {
+      if ( din.readBoolean() )
+      {
+        table[ row ] = new PeerInformation[ 16 ];
+
+        for ( int i = 0; i < 16; ++i )
+        {
+          if ( din.readBoolean() )
+          {
+            table[ row ][ i ] = MessageUtilities.readPeerInformation( din );
+          }
+        }
+      }
+    }
+
+    this.leafSet = new PeerInformation[ Constants.LEAF_SET_SIZE ];
+
+    for ( int i = 0; i < Constants.LEAF_SET_SIZE; ++i )
+    {
+      if ( din.readBoolean() )
+      {
+        leafSet[ i ] = MessageUtilities.readPeerInformation( din );
+      }
+    }
+
     this.rowIndex = din.readInt();
 
     inputStream.close();
@@ -72,16 +103,28 @@ public class PeerInitializeLocation implements Event {
     return destination;
   }
 
+  public PeerInformation[] getLeafSet() {
+    return leafSet;
+  }
+
+  public PeerInformation getLeafSetByIndex(int index) {
+    return leafSet[ index ];
+  }
+
   public int getRowIndex() {
     return rowIndex;
   }
-  
+
   public void incrementRowIndex() {
     ++rowIndex;
   }
 
   public void setTableRow(PeerInformation[] row) {
     table[ rowIndex ] = row;
+  }
+
+  public void setLeafSetIndex(PeerInformation leaf, int index) {
+    leafSet[ index ] = leaf;
   }
 
   /**
@@ -98,6 +141,38 @@ public class PeerInitializeLocation implements Event {
 
     MessageUtilities.writePeerInformation( dout, destination );
 
+    for ( PeerInformation[] row : table )
+    {
+      if ( row == null )
+      {
+        dout.writeBoolean( false );
+      } else
+      {
+        dout.writeBoolean( true );
+        for ( PeerInformation peer : row )
+        {
+          if ( peer == null )
+          {
+            dout.writeBoolean( false );
+          } else
+          {
+            dout.writeBoolean( true );
+            MessageUtilities.writePeerInformation( dout, peer );
+          }
+        }
+      }
+    }
+    for ( PeerInformation peer : leafSet )
+    {
+      if ( peer == null )
+      {
+        dout.writeBoolean( false );
+      } else
+      {
+        dout.writeBoolean( true );
+        MessageUtilities.writePeerInformation( dout, peer );
+      }
+    }
 
     dout.writeInt( rowIndex );
 

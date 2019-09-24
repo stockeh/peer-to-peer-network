@@ -59,7 +59,7 @@ public class EventFactory {
 
       case Protocol.REGISTER_RESPONSE :
         return new RegisterResponse( marshalledBytes );
-
+        
       case Protocol.IDENTIFIER_COLLISION :
       case Protocol.DISCOVER_NODE_REQUEST :
         return new GenericMessage( marshalledBytes );
@@ -69,6 +69,7 @@ public class EventFactory {
 
       case Protocol.PEER_INITIALIZE_LOCATION :
         return new PeerInitializeLocation( marshalledBytes );
+        
       default :
         LOG.error( "Event could not be created. "
             + ByteBuffer.wrap( marshalledBytes ).getInt() );
