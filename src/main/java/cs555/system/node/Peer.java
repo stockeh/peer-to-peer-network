@@ -8,19 +8,21 @@ import java.util.List;
 import java.util.Scanner;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.stream.Stream;
 import cs555.system.metadata.PeerInformation;
 import cs555.system.metadata.PeerMetadata;
 import cs555.system.transport.TCPConnection;
 import cs555.system.transport.TCPServerThread;
 import cs555.system.util.ConnectionUtilities;
+import cs555.system.util.Constants;
 import cs555.system.util.IdentifierUtilities;
 import cs555.system.util.Logger;
 import cs555.system.util.Properties;
 import cs555.system.wireformats.DiscoverNodeResponse;
 import cs555.system.wireformats.Event;
-import cs555.system.wireformats.PeerInitializeLocation;
+import cs555.system.wireformats.GenericPeerMessage;
+import cs555.system.wireformats.JoinNetwork;
 import cs555.system.wireformats.Protocol;
-import cs555.system.wireformats.RegisterRequest;
 
 /**
  *
@@ -56,7 +58,8 @@ public class Peer implements Node {
   }
 
   /**
-   * Initialize the peer with the discovery.
+   * Start listening for incoming connections and establish connection
+   * into the peer network.
    *
    * @param args
    */
@@ -82,9 +85,10 @@ public class Peer implements Node {
   }
 
   /**
+   * Create an identifier for the peer, and connect with Discovery.
    * 
-   * @param args
-   * @param connection
+   * @param args (Optional) from the command line
+   * @param connection to Discovery
    * @throws IOException
    */
   private void discoverConnection(String[] args, TCPConnection connection)
@@ -109,8 +113,8 @@ public class Peer implements Node {
     {
       metadata.setIdentifier( IdentifierUtilities.timestampToIdentifier() );
     }
-    RegisterRequest request =
-        new RegisterRequest( Protocol.REGISTER_REQUEST, metadata.self() );
+    GenericPeerMessage request =
+        new GenericPeerMessage( Protocol.REGISTER_REQUEST, metadata.self() );
     connection.getTCPSender().sendData( request.getBytes() );
   }
 
@@ -159,7 +163,7 @@ public class Peer implements Node {
     switch ( event.getType() )
     {
       case Protocol.DISCOVER_NODE_RESPONSE :
-        disvoverNodeHandler( event, connection );
+        dicoverNodeHandler( event, connection );
         break;
 
       case Protocol.IDENTIFIER_COLLISION :
@@ -173,31 +177,66 @@ public class Peer implements Node {
         }
         break;
 
-      case Protocol.PEER_INITIALIZE_LOCATION :
-        peerInitializeHandler( event, connection );
+      case Protocol.JOIN_NETWORK_REQUEST :
+        join( event, connection );
         break;
+
+      case Protocol.FORWARD_IDENTIFIER :
+        updateRoutingTable( event );
+        LOG.debug( "Add the identifier: " + event.toString() );
+        break;
+
     }
   }
 
   /**
+   * Finds the longest prefix with this and the joining peer and adds
+   * that peer to the <tt>p + 1</tt> location in this routing table.
    * 
    * @param event
-   * @param connection
    */
-  private void peerInitializeHandler(Event event, TCPConnection connection) {
-    PeerInitializeLocation request = ( PeerInitializeLocation ) event;
+  private void updateRoutingTable(Event event) {
+    PeerInformation peer = ( ( GenericPeerMessage ) event ).getPeer();
+
+    int row = 0;
+    for ( ; row < Constants.NUMBER_OF_ROWS; ++row )
+    {
+      int selfCol =
+          Character.digit( metadata.self().getIdentifier().charAt( row ), 16 );
+      int destCol = Character.digit( peer.getIdentifier().charAt( row ), 16 );
+
+      if ( selfCol - destCol != 0 )
+      {
+        break;
+      }
+    }
+    metadata.table().addPeerToTable( peer, row );
+    metadata.table().display();
+  }
+
+  /**
+   * Once an entry point to the network has been discovered, the peer
+   * should join the network and construct its own DHT and leaf set.
+   * 
+   * A new peer will join the network at the location nearest to other
+   * peer identifiers.
+   * 
+   * @param event
+   * @param connection to original request
+   */
+  private void join(Event event, TCPConnection connection) {
+    JoinNetwork request = ( JoinNetwork ) event;
 
     if ( metadata.self().equals( request.getDestination() ) )
     {
-      connection.close();
       initializeDHT( request );
       return;
     } else
     {
-      boolean isFirstPeer = request.getRowIndex() == 0;
+      boolean isSourcePeer = request.getRowIndex() == 0;
       try
       {
-        traversePrefix( request, isFirstPeer, connection );
+        constructDHT( request, isSourcePeer, connection );
       } catch ( IOException e )
       {
         e.printStackTrace();
@@ -206,14 +245,15 @@ public class Peer implements Node {
   }
 
   /**
+   * Construct the DHT for the peer requesting to join the network.
    * 
    * @param request
-   * @param isFirstPeer
+   * @param isSourcePeer
    * @param connection
    * @throws IOException
    */
-  private void traversePrefix(PeerInitializeLocation request,
-      boolean isFirstPeer, TCPConnection connection) throws IOException {
+  private void constructDHT(JoinNetwork request, boolean isSourcePeer,
+      TCPConnection connection) throws IOException {
 
     int row = request.getRowIndex();
     request.setTableRow( metadata.table().getTableRow( row ) );
@@ -227,7 +267,7 @@ public class Peer implements Node {
 
     if ( selfCol == destCol )
     {
-      traversePrefix( request, isFirstPeer, connection );
+      constructDHT( request, isSourcePeer, connection );
       return;
     } else
     {
@@ -239,29 +279,9 @@ public class Peer implements Node {
             peer.getHost(), peer.getPort() );
         n.getTCPSender().sendData( request.getBytes() );
       } else
-      { // assumes leaf set size is 2
-        for ( int i = 1; i < 16; ++i )
-        {
-          if ( request.getLeafSetByIndex( 1 ) == null )
-          {
-            PeerInformation right = metadata.table().getTableIndex( row,
-                Math.floorMod( destCol + 1, 16 ) );
-            if ( right != null )
-            {
-              request.setLeafSetIndex( right, 1 );
-            }
-          }
-          if ( request.getLeafSetByIndex( 0 ) == null )
-          {
-            PeerInformation left = metadata.table().getTableIndex( row,
-                Math.floorMod( destCol - 1, 16 ) );
-            if ( left != null )
-            {
-              request.setLeafSetIndex( left, 1 );
-            }
-          }
-        }
-        if ( isFirstPeer )
+      {
+        constructLeafSet( request, row, destCol );
+        if ( isSourcePeer )
         {
           connection.getTCPSender().sendData( request.getBytes() );
         } else
@@ -276,10 +296,52 @@ public class Peer implements Node {
   }
 
   /**
+   * The leaf set is constructed using the row containing the greatest
+   * common prefix with the peer joining the network.
+   * 
+   * A peer will have two leaves, one on either side of it.
+   * 
+   * <p>
+   * <tt>{ L, this, R }</tt>
+   * </p>
+   * 
+   * @param request
+   * @param row
+   * @param destCol
+   */
+  private void constructLeafSet(JoinNetwork request, int row, int destCol) {
+    for ( int i = 1; i < 16; ++i )
+    {
+      if ( request.getLeafSetByIndex( 1 ) == null )
+      {
+        PeerInformation right = metadata.table().getTableIndex( row,
+            Math.floorMod( destCol + 1, 16 ) );
+        if ( right != null )
+        {
+          request.setLeafSetIndex( right, 1 );
+        }
+      }
+      if ( request.getLeafSetByIndex( 0 ) == null )
+      {
+        PeerInformation left = metadata.table().getTableIndex( row,
+            Math.floorMod( destCol - 1, 16 ) );
+        if ( left != null )
+        {
+          request.setLeafSetIndex( left, 1 );
+        }
+      }
+    }
+  }
+
+  /**
+   * Construct this peers leaf set and routing table.
+   * 
+   * Forward this nodes content to all nodes identified in the leaf set
+   * and the routing table for reference.
    * 
    * @param request
    */
-  private void initializeDHT(PeerInitializeLocation request) {
+  private void initializeDHT(JoinNetwork request) {
     LOG.debug( "Initializing Peer" );
     metadata.table().setTable( request.getTable() );
     metadata.addSelfToTable();
@@ -299,8 +361,41 @@ public class Peer implements Node {
       }
     }
     LOG.info( sb.toString() );
-  }
+    byte[] data;
+    try
+    {
+      data =
+          new GenericPeerMessage( Protocol.FORWARD_IDENTIFIER, metadata.self() )
+              .getBytes();
+    } catch ( IOException e )
+    {
+      LOG.error( "Unable to send create output stream for message. "
+          + e.getMessage() );
+      e.printStackTrace();
+      return;
+    }
+    Stream.of( metadata.table().getTable() ).flatMap( Stream::of )
+        .forEach( peer ->
+        {
+          if ( peer != null )
+          {
+            try
+            {
 
+              TCPConnection connection =
+                  connections.cacheConnection( this, peer, false );
+              connection.getTCPSender().sendData( data );
+            } catch ( NumberFormatException | IOException e )
+            {
+              LOG.error(
+                  "Unable to send message to source node. " + e.getMessage() );
+              e.printStackTrace();
+            }
+          }
+        } );
+    connections.closeCachedConnections();
+    // TODO: establish leaf-set
+  }
 
   /**
    * Connect with Discovery to find a source node for entering the
@@ -309,7 +404,7 @@ public class Peer implements Node {
    * @param event
    * @param connection
    */
-  private void disvoverNodeHandler(Event event, TCPConnection connection) {
+  private void dicoverNodeHandler(Event event, TCPConnection connection) {
     DiscoverNodeResponse response = ( DiscoverNodeResponse ) event;
     if ( response.isInitialPeerConnection() )
     {
@@ -323,8 +418,7 @@ public class Peer implements Node {
       PeerInformation source = response.getSourceInformation();
       LOG.info(
           "Connecting to the DHT through source node: " + source.toString() );
-      PeerInitializeLocation request =
-          new PeerInitializeLocation( metadata.self() );
+      JoinNetwork request = new JoinNetwork( metadata.self() );
       try
       {
         TCPConnection sourceConnection =

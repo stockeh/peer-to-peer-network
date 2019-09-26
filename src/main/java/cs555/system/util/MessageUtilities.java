@@ -5,8 +5,20 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import cs555.system.metadata.PeerInformation;
 
+/**
+ * 
+ * 
+ * @author stock
+ *
+ */
 public class MessageUtilities {
 
+  /**
+   * 
+   * @param dout
+   * @param peer
+   * @throws IOException
+   */
   public static void writePeerInformation(DataOutputStream dout,
       PeerInformation peer) throws IOException {
     byte[] identifierBytes = peer.getIdentifier().getBytes();
@@ -20,6 +32,12 @@ public class MessageUtilities {
     dout.writeInt( peer.getPort() );
   }
 
+  /**
+   * 
+   * @param din
+   * @return
+   * @throws IOException
+   */
   public static PeerInformation readPeerInformation(DataInputStream din)
       throws IOException {
     int len = din.readInt();

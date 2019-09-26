@@ -16,11 +16,13 @@ public interface Protocol {
   final int UNREGISTER_REQUEST = 2;
 
   final int IDENTIFIER_COLLISION = 3;
-  
+
   final int DISCOVER_NODE_REQUEST = 4;
 
   final int DISCOVER_NODE_RESPONSE = 5;
 
-  final int PEER_INITIALIZE_LOCATION = 6;
-  
+  final int JOIN_NETWORK_REQUEST = 6;
+
+  final int FORWARD_IDENTIFIER = 7;
+
 }

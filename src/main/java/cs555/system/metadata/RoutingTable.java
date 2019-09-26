@@ -22,6 +22,13 @@ public class RoutingTable {
 
   /**
    * 
+   */
+  public PeerInformation[][] getTable() {
+    return table;
+  }
+
+  /**
+   * 
    * @param row
    */
   public void setTable(PeerInformation[][] table) {

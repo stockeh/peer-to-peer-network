@@ -46,20 +46,23 @@ public class ConnectionUtilities {
    * @throws NumberFormatException
    */
   public TCPConnection cacheConnection(Node node, PeerInformation peer,
-      boolean startConnection) throws NumberFormatException, IOException {
+      boolean startConnection) throws IOException {
 
     TCPConnection connection;
-    if ( temporaryConnections.containsKey( peer.getIdentifier() ) )
+    synchronized ( temporaryConnections )
     {
-      connection = temporaryConnections.get( peer.getIdentifier() );
-    } else
-    {
-      connection = ConnectionUtilities.establishConnection( node,
-          peer.getHost(), peer.getPort() );
-      temporaryConnections.put( peer.getIdentifier(), connection );
-      if ( startConnection )
+      if ( temporaryConnections.containsKey( peer.getIdentifier() ) )
       {
-        connection.submitTo( executorService );
+        connection = temporaryConnections.get( peer.getIdentifier() );
+      } else
+      {
+        connection = ConnectionUtilities.establishConnection( node,
+            peer.getHost(), peer.getPort() );
+        temporaryConnections.put( peer.getIdentifier(), connection );
+        if ( startConnection )
+        {
+          connection.submitTo( executorService );
+        }
       }
     }
     return connection;
@@ -70,11 +73,14 @@ public class ConnectionUtilities {
    * 
    */
   public void closeCachedConnections() {
-    temporaryConnections.forEach( (k, v) ->
+    synchronized ( temporaryConnections )
     {
-      v.close();
-    } );
-    temporaryConnections.clear();
+      temporaryConnections.forEach( (k, v) ->
+      {
+        v.close();
+      } );
+      temporaryConnections.clear();
+    }
   }
 
   /**
