@@ -3,6 +3,7 @@ package cs555.system.transport;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.concurrent.ExecutorService;
 import cs555.system.node.Node;
 import cs555.system.util.Logger;
 
@@ -26,16 +27,21 @@ public class TCPServerThread implements Runnable {
 
   private ServerSocket serverSocket;
 
+  private ExecutorService executorService;
+
   /**
    * Default constructor - setup the server socket for the thread to run
    * on.
    * 
    * @param node
    * @param serverSocket
+   * @param executorService
    */
-  public TCPServerThread(Node node, ServerSocket serverSocket) {
+  public TCPServerThread(Node node, ServerSocket serverSocket,
+      ExecutorService executorService) {
     this.node = node;
     this.serverSocket = serverSocket;
+    this.executorService = executorService;
   }
 
   /**
@@ -51,10 +57,12 @@ public class TCPServerThread implements Runnable {
       try
       {
         Socket incomingConnectionSocket = serverSocket.accept();
-        ( new TCPConnection( node, incomingConnectionSocket ) ).start();
+        LOG.debug( "Sumbitting connection to thread pool" );
+        ( new TCPConnection( node, incomingConnectionSocket ) )
+            .submitTo( executorService );
       } catch ( IOException e )
       {
-        LOG.debug( "Closing connection... " + e );
+        LOG.debug( "Closing Server Socket Connection... " + e.getMessage() );
         break;
       }
     }

@@ -7,6 +7,8 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import cs555.system.metadata.PeerInformation;
+import cs555.system.util.MessageUtilities;
 
 /**
  * 
@@ -19,20 +21,17 @@ public class DiscoverNodeResponse implements Event {
 
   private boolean initialPeerConnection;
 
-  private String host;
-
-  private int port;
+  private PeerInformation source;
 
   public DiscoverNodeResponse() {
     this.type = Protocol.DISCOVER_NODE_RESPONSE;
     this.initialPeerConnection = true;
   }
 
-  public DiscoverNodeResponse(String host, int port) {
+  public DiscoverNodeResponse(PeerInformation source) {
     this.type = Protocol.DISCOVER_NODE_RESPONSE;
     this.initialPeerConnection = false;
-    this.host = host;
-    this.port = port;
+    this.source = source;
   }
 
   /**
@@ -54,13 +53,7 @@ public class DiscoverNodeResponse implements Event {
 
     if ( !initialPeerConnection )
     {
-      int len = din.readInt();
-      byte[] bytes = new byte[ len ];
-      din.readFully( bytes );
-
-      this.host = new String( bytes );
-
-      this.port = din.readInt();
+      this.source = MessageUtilities.readPeerInformation( din );
     }
     inputStream.close();
     din.close();
@@ -76,26 +69,18 @@ public class DiscoverNodeResponse implements Event {
 
   /**
    * 
+   * @return the peer that will be an entry point to the network
+   */
+  public PeerInformation getSourceInformation() {
+    return this.source;
+  }
+
+  /**
+   * 
    * @return if is the initial peer connection, false otherwise
    */
   public boolean isInitialPeerConnection() {
     return this.initialPeerConnection;
-  }
-
-  /**
-   * 
-   * @return the host address from the connection
-   */
-  public String getHost() {
-    return this.host;
-  }
-
-  /**
-   * 
-   * @return the port number from the connection
-   */
-  public int getPort() {
-    return this.port;
   }
 
   /**
@@ -114,11 +99,7 @@ public class DiscoverNodeResponse implements Event {
 
     if ( !initialPeerConnection )
     {
-      byte[] hostBytes = host.getBytes();
-      dout.writeInt( hostBytes.length );
-      dout.write( hostBytes );
-
-      dout.writeInt( port );
+      MessageUtilities.writePeerInformation( dout, source );
     }
     dout.flush();
     marshalledBytes = outputStream.toByteArray();

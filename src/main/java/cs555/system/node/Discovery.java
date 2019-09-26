@@ -1,12 +1,13 @@
 package cs555.system.node;
 
 import java.io.IOException;
-import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Scanner;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadLocalRandom;
 import cs555.system.metadata.PeerInformation;
 import cs555.system.transport.TCPConnection;
@@ -35,38 +36,11 @@ public class Discovery implements Node {
 
   private List<PeerInformation> registeredNodes;
 
-  private String host;
-
-  private int port;
-
   /**
-   * Default constructor - creates a new discovery tying the
-   * <b>host:port</b> combination for the node as the identifier for
-   * itself.
-   * 
-   * @param host
-   * @param port
+   * Default constructor
    */
-  public Discovery(String host, int port) {
+  public Discovery() {
     this.registeredNodes = new ArrayList<>();
-    this.host = host;
-    this.port = port;
-  }
-
-  /**
-   * {@inheritDoc}
-   */
-  @Override
-  public String getHost() {
-    return this.host;
-  }
-
-  /**
-   * {@inheritDoc}
-   */
-  @Override
-  public int getPort() {
-    return this.port;
   }
 
   /**
@@ -80,11 +54,11 @@ public class Discovery implements Node {
     try ( ServerSocket serverSocket =
         new ServerSocket( Properties.DISCOVERY_PORT ) )
     {
-      Discovery discovery =
-          new Discovery( InetAddress.getLocalHost().getHostName(),
-              serverSocket.getLocalPort() );
+      Discovery discovery = new Discovery();
+      ExecutorService executorService = Executors.newFixedThreadPool( 1 );
 
-      ( new Thread( new TCPServerThread( discovery, serverSocket ),
+      ( new Thread(
+          new TCPServerThread( discovery, serverSocket, executorService ),
           "Server Thread" ) ).start();
 
       discovery.interact();
@@ -172,6 +146,7 @@ public class Discovery implements Node {
         connection.getTCPSender()
             .sendData( ( new GenericMessage( Protocol.IDENTIFIER_COLLISION ) )
                 .getBytes() );
+        LOG.debug( "MSG SEND to Peer" );
       } catch ( IOException e )
       {
         LOG.error(
@@ -182,6 +157,9 @@ public class Discovery implements Node {
     {
       selectPeerNode( connection );
       registeredNodes.add( peer );
+      LOG.info( ( new StringBuilder() )
+          .append( "New peer has been registered with Discovery: " )
+          .append( peer.toString() ).toString() );
     }
   }
 
@@ -200,8 +178,8 @@ public class Discovery implements Node {
     } else
     {
       int index = ThreadLocalRandom.current().nextInt( numberOfNodes );
-      PeerInformation info = registeredNodes.get( index );
-      response = new DiscoverNodeResponse( info.getHost(), info.getPort() );
+      PeerInformation source = registeredNodes.get( index );
+      response = new DiscoverNodeResponse( source );
     }
     try
     {
@@ -225,8 +203,9 @@ public class Discovery implements Node {
     } else
     {
       System.out.println(
-          "\nThere are " + registeredNodes.size() + " total links:\n" );
-      registeredNodes.forEach( v -> System.out.println( v.toString() ) );
+          "\nThere are " + registeredNodes.size() + " total peers:\n" );
+      registeredNodes
+          .forEach( v -> System.out.println( "\t>\t" + v.toString() ) );
       System.out.println();
     }
   }

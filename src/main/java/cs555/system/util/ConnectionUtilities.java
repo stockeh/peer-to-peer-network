@@ -4,6 +4,8 @@ import java.io.IOException;
 import java.net.Socket;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import cs555.system.metadata.PeerInformation;
 import cs555.system.node.Node;
 import cs555.system.transport.TCPConnection;
 
@@ -15,46 +17,49 @@ import cs555.system.transport.TCPConnection;
  */
 public class ConnectionUtilities {
 
-  private static final Logger LOG = Logger.getInstance();
-
   private final Map<String, TCPConnection> temporaryConnections;
+
+  private ExecutorService executorService;
 
   /**
    * Default constructor -
    * 
+   * @param executorService
+   * 
    */
-  public ConnectionUtilities() {
+  public ConnectionUtilities(ExecutorService executorService) {
     this.temporaryConnections = new HashMap<>();
+    this.executorService = executorService;
   }
 
   /**
-   * O Either establish a new or retrieve a cached connection made
+   * Either establish a new or retrieve a cached connection made
    * previously.
    * 
+   * @param node corresponding to the connection
+   * @param peer to connect to
    * @param startConnection true to start the TCP Receiver Thread, false
    *        otherwise
-   * @param connectionDetails to connect to
+   * 
    * @return the cached TCP connection
    * @throws IOException
    * @throws NumberFormatException
    */
-  public TCPConnection cacheConnection(Node node, String[] address,
+  public TCPConnection cacheConnection(Node node, PeerInformation peer,
       boolean startConnection) throws NumberFormatException, IOException {
-    String connectionDetails = ( new StringBuilder() ).append( address[ 0 ] )
-        .append( ":" ).append( address[ 1 ] ).toString();
 
     TCPConnection connection;
-    if ( temporaryConnections.containsKey( connectionDetails ) )
+    if ( temporaryConnections.containsKey( peer.getIdentifier() ) )
     {
-      connection = temporaryConnections.get( connectionDetails );
+      connection = temporaryConnections.get( peer.getIdentifier() );
     } else
     {
-      connection = ConnectionUtilities.establishConnection( node, address[ 0 ],
-          Integer.parseInt( address[ 1 ] ) );
-      temporaryConnections.put( connectionDetails, connection );
+      connection = ConnectionUtilities.establishConnection( node,
+          peer.getHost(), peer.getPort() );
+      temporaryConnections.put( peer.getIdentifier(), connection );
       if ( startConnection )
       {
-        connection.start();
+        connection.submitTo( executorService );
       }
     }
     return connection;
@@ -67,13 +72,7 @@ public class ConnectionUtilities {
   public void closeCachedConnections() {
     temporaryConnections.forEach( (k, v) ->
     {
-      try
-      {
-        v.close();
-      } catch ( IOException | InterruptedException e )
-      {
-        LOG.error( "Unable to close the connection for " + k );
-      }
+      v.close();
     } );
     temporaryConnections.clear();
   }

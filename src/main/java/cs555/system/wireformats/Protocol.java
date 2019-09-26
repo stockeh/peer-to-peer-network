@@ -20,5 +20,7 @@ public interface Protocol {
   final int DISCOVER_NODE_REQUEST = 4;
 
   final int DISCOVER_NODE_RESPONSE = 5;
+
+  final int PEER_INITIALIZE_LOCATION = 6;
   
 }

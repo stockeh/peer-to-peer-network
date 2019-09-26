@@ -7,13 +7,14 @@ package cs555.system.metadata;
  */
 public class PeerInformation {
 
-  final String identifier;
+  String identifier;
 
   final String host;
 
   final int port;
 
   /**
+   * Default constructor -
    * 
    * @param identifier
    * @param host
@@ -23,6 +24,14 @@ public class PeerInformation {
     this.identifier = identifier;
     this.host = host;
     this.port = port;
+  }
+
+  /**
+   * 
+   * @return the identifier from the peer
+   */
+  public String getIdentifier() {
+    return this.identifier;
   }
 
   /**
@@ -41,8 +50,20 @@ public class PeerInformation {
     return this.port;
   }
 
+  /**
+   * Set the identifier associated with a peer
+   * 
+   */
+  public void setIdentifier(String identifier) {
+    this.identifier = identifier;
+  }
+
   @Override
   public boolean equals(Object o) {
+    if ( o == null )
+    {
+      return false;
+    }
     if ( o == this )
     {
       return true;
@@ -61,8 +82,8 @@ public class PeerInformation {
 
   @Override
   public String toString() {
-    return ( new StringBuilder() ).append( "\t>\t" ).append( identifier )
-        .append( " | " ).append( host ).append( ":" ).append( port ).toString();
+    return ( new StringBuilder() ).append( identifier ).append( " | " )
+        .append( host ).append( ":" ).append( port ).toString();
   }
 
 }
