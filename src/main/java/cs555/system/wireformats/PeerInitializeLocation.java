@@ -7,6 +7,8 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import cs555.system.metadata.PeerInformation;
 import cs555.system.util.Constants;
 import cs555.system.util.MessageUtilities;
@@ -26,18 +28,18 @@ public class PeerInitializeLocation implements Event {
 
   private PeerInformation[] leafSet;
 
-  private int rowIndex;
+  private List<Short> networkTraceIndex;
 
   /**
    * Default constructor -
    * 
    */
-  public PeerInitializeLocation(PeerInformation destination, int rowIndex) {
+  public PeerInitializeLocation(PeerInformation destination) {
     this.type = Protocol.PEER_INITIALIZE_LOCATION;
     this.destination = destination;
-    this.table = new PeerInformation[ Constants.NUMBER_OF_ROWS ][];
+    this.table = new PeerInformation[ Constants.NUMBER_OF_ROWS ][ 16 ];
     this.leafSet = new PeerInformation[ Constants.LEAF_SET_SIZE ];
-    this.rowIndex = rowIndex;
+    this.networkTraceIndex = new ArrayList<>();
   }
 
   /**
@@ -57,7 +59,7 @@ public class PeerInitializeLocation implements Event {
 
     this.destination = MessageUtilities.readPeerInformation( din );
 
-    this.table = new PeerInformation[ Constants.NUMBER_OF_ROWS ][];
+    this.table = new PeerInformation[ Constants.NUMBER_OF_ROWS ][ 16 ];
 
     for ( int row = 0; row < Constants.NUMBER_OF_ROWS; ++row )
     {
@@ -85,7 +87,12 @@ public class PeerInitializeLocation implements Event {
       }
     }
 
-    this.rowIndex = din.readInt();
+    short len = din.readShort();
+    this.networkTraceIndex = new ArrayList<>( len );
+    for ( int i = 0; i < len; ++i )
+    {
+      networkTraceIndex.add( din.readShort() );
+    }
 
     inputStream.close();
     din.close();
@@ -107,20 +114,28 @@ public class PeerInitializeLocation implements Event {
     return leafSet;
   }
 
+  public PeerInformation[][] getTable() {
+    return table;
+  }
+
   public PeerInformation getLeafSetByIndex(int index) {
     return leafSet[ index ];
   }
 
-  public int getRowIndex() {
-    return rowIndex;
+  public List<Short> getNetworkTraceIndex() {
+    return networkTraceIndex;
   }
 
-  public void incrementRowIndex() {
-    ++rowIndex;
+  public int getRowIndex() {
+    return networkTraceIndex.size();
+  }
+
+  public void addNetworkTraceRoute(int rowIndex) {
+    networkTraceIndex.add( ( short ) rowIndex );
   }
 
   public void setTableRow(PeerInformation[] row) {
-    table[ rowIndex ] = row;
+    table[ getRowIndex() ] = row;
   }
 
   public void setLeafSetIndex(PeerInformation leaf, int index) {
@@ -174,7 +189,12 @@ public class PeerInitializeLocation implements Event {
       }
     }
 
-    dout.writeInt( rowIndex );
+    dout.writeShort( networkTraceIndex.size() );
+
+    for ( Short s : networkTraceIndex )
+    {
+      dout.writeShort( s );
+    }
 
     dout.flush();
     marshalledBytes = outputStream.toByteArray();

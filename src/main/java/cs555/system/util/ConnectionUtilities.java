@@ -17,8 +17,6 @@ import cs555.system.transport.TCPConnection;
  */
 public class ConnectionUtilities {
 
-  private static final Logger LOG = Logger.getInstance();
-
   private final Map<String, TCPConnection> temporaryConnections;
 
   private ExecutorService executorService;
@@ -74,13 +72,7 @@ public class ConnectionUtilities {
   public void closeCachedConnections() {
     temporaryConnections.forEach( (k, v) ->
     {
-      try
-      {
-        v.close();
-      } catch ( IOException | InterruptedException e )
-      {
-        LOG.error( "Unable to close the connection for " + k );
-      }
+      v.close();
     } );
     temporaryConnections.clear();
   }

@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.util.Date;
+import java.util.List;
 import java.util.Scanner;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -110,9 +111,7 @@ public class Peer implements Node {
     }
     RegisterRequest request =
         new RegisterRequest( Protocol.REGISTER_REQUEST, metadata.self() );
-    LOG.debug( "HERE1" );
     connection.getTCPSender().sendData( request.getBytes() );
-    LOG.debug( "HERE2" );
   }
 
   /**
@@ -175,8 +174,7 @@ public class Peer implements Node {
         break;
 
       case Protocol.PEER_INITIALIZE_LOCATION :
-        // peerInitializeHandler( event, connection );
-        LOG.debug( "HEREEE3" );
+        peerInitializeHandler( event, connection );
         break;
     }
   }
@@ -191,6 +189,7 @@ public class Peer implements Node {
 
     if ( metadata.self().equals( request.getDestination() ) )
     {
+      connection.close();
       initializeDHT( request );
       return;
     } else
@@ -206,6 +205,13 @@ public class Peer implements Node {
     }
   }
 
+  /**
+   * 
+   * @param request
+   * @param isFirstPeer
+   * @param connection
+   * @throws IOException
+   */
   private void traversePrefix(PeerInitializeLocation request,
       boolean isFirstPeer, TCPConnection connection) throws IOException {
 
@@ -217,9 +223,10 @@ public class Peer implements Node {
     int destCol = Character
         .digit( request.getDestination().getIdentifier().charAt( row ), 16 );
 
+    request.addNetworkTraceRoute( selfCol );
+
     if ( selfCol == destCol )
     {
-      request.incrementRowIndex();
       traversePrefix( request, isFirstPeer, connection );
       return;
     } else
@@ -274,7 +281,24 @@ public class Peer implements Node {
    */
   private void initializeDHT(PeerInitializeLocation request) {
     LOG.debug( "Initializing Peer" );
-    // TODO: clear cached connections after initializing
+    metadata.table().setTable( request.getTable() );
+    metadata.addSelfToTable();
+    metadata.table().display();
+
+    String trace = "";
+    StringBuilder sb = new StringBuilder( "Network Join Trace: " );
+    List<Short> networkTraceIndex = request.getNetworkTraceIndex();
+    for ( int i = 0; i < networkTraceIndex.size(); ++i )
+    {
+      String s =
+          request.getTable()[ i ][ networkTraceIndex.get( i ) ].getIdentifier();
+      if ( !trace.equals( s ) )
+      {
+        sb.append( "-> " ).append( s );
+        trace = s;
+      }
+    }
+    LOG.info( sb.toString() );
   }
 
 
@@ -300,7 +324,7 @@ public class Peer implements Node {
       LOG.info(
           "Connecting to the DHT through source node: " + source.toString() );
       PeerInitializeLocation request =
-          new PeerInitializeLocation( metadata.self(), 0 );
+          new PeerInitializeLocation( metadata.self() );
       try
       {
         TCPConnection sourceConnection =
@@ -312,16 +336,7 @@ public class Peer implements Node {
         e.printStackTrace();
       }
     }
-    LOG.debug( "Closing Connection" );
-    try
-    {
-      connection.close();
-    } catch ( IOException | InterruptedException e )
-    {
-      LOG.error( "Unable to close the connection with the Discovery node. "
-          + e.getMessage() );
-      e.printStackTrace();
-    }
+    connection.close();
   }
 
   /**

@@ -24,8 +24,8 @@ public class RoutingTable {
    * 
    * @param row
    */
-  public void addTableRow(PeerInformation[] row, int index) {
-
+  public void setTable(PeerInformation[][] table) {
+    this.table = table;
   }
 
   /**

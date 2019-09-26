@@ -14,7 +14,7 @@ public class PeerInformation {
   final int port;
 
   /**
-   * Default constructor - 
+   * Default constructor -
    * 
    * @param identifier
    * @param host
@@ -33,7 +33,7 @@ public class PeerInformation {
   public String getIdentifier() {
     return this.identifier;
   }
-  
+
   /**
    * 
    * @return the host address from the peer
@@ -60,6 +60,10 @@ public class PeerInformation {
 
   @Override
   public boolean equals(Object o) {
+    if ( o == null )
+    {
+      return false;
+    }
     if ( o == this )
     {
       return true;

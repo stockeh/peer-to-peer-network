@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.net.Socket;
 import java.util.concurrent.ExecutorService;
 import cs555.system.node.Node;
+import cs555.system.util.Logger;
 
 /**
  * This class is used to establish a connection by starting a new
@@ -13,6 +14,8 @@ import cs555.system.node.Node;
  *
  */
 public class TCPConnection {
+
+  private static final Logger LOG = Logger.getInstance();
 
   private Socket socket;
 
@@ -66,12 +69,18 @@ public class TCPConnection {
   /**
    * Close the socket sender and receiver.
    * 
-   * @throws IOException
-   * @throws InterruptedException
    */
-  public void close() throws IOException, InterruptedException {
-    this.sender.dout.close();
-    this.receiver.din.close();
-    this.socket.close();
+  public void close() {
+    try
+    {
+      this.sender.dout.close();
+      this.receiver.din.close();
+      this.socket.close();
+    } catch ( IOException e )
+    {
+      LOG.error(
+          "Unable to close the connection with node. " + e.getMessage() );
+      e.printStackTrace();
+    }
   }
 }
