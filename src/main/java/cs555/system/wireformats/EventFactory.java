@@ -50,16 +50,12 @@ public class EventFactory {
    * @throws IOException
    */
   public Event createEvent(byte[] marshalledBytes) throws IOException {
-
     switch ( ByteBuffer.wrap( marshalledBytes ).getInt() )
     {
       case Protocol.REGISTER_REQUEST :
       case Protocol.UNREGISTER_REQUEST :
       case Protocol.FORWARD_IDENTIFIER :
         return new GenericPeerMessage( marshalledBytes );
-
-      case Protocol.REGISTER_RESPONSE :
-        return new RegisterResponse( marshalledBytes );
 
       case Protocol.IDENTIFIER_COLLISION :
       case Protocol.DISCOVER_NODE_REQUEST :

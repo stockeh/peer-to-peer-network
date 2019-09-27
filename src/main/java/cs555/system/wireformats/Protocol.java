@@ -11,18 +11,16 @@ public interface Protocol {
 
   final int REGISTER_REQUEST = 0;
 
-  final int REGISTER_RESPONSE = 1;
+  final int UNREGISTER_REQUEST = 1;
 
-  final int UNREGISTER_REQUEST = 2;
+  final int IDENTIFIER_COLLISION = 2;
 
-  final int IDENTIFIER_COLLISION = 3;
+  final int DISCOVER_NODE_REQUEST = 3;
 
-  final int DISCOVER_NODE_REQUEST = 4;
+  final int DISCOVER_NODE_RESPONSE = 4;
 
-  final int DISCOVER_NODE_RESPONSE = 5;
+  final int JOIN_NETWORK_REQUEST = 5;
 
-  final int JOIN_NETWORK_REQUEST = 6;
-
-  final int FORWARD_IDENTIFIER = 7;
+  final int FORWARD_IDENTIFIER = 6;
 
 }

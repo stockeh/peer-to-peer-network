@@ -206,7 +206,7 @@ public class JoinNetwork implements Event {
 
   @Override
   public String toString() {
-    return "\n" + type;
+    return Integer.toString( type );
   }
 
 }

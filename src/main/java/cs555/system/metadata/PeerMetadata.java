@@ -35,6 +35,23 @@ public class PeerMetadata {
   }
 
   /**
+   * This peer is initialized after the establishing itself with the
+   * DHT. Thereafter, allowing other peers to connect.
+   * 
+   */
+  public void initialized() {
+    initialized = true;
+    try
+    {
+      lock.lock();
+      condition.signal();
+    } finally
+    {
+      lock.unlock();
+    }
+  }
+
+  /**
    * 
    * @return this peers information
    */
@@ -56,6 +73,14 @@ public class PeerMetadata {
    */
   public Lock getLock() {
     return lock;
+  }
+
+  /**
+   * 
+   * @return
+   */
+  public boolean isInitialized() {
+    return initialized;
   }
 
   /**

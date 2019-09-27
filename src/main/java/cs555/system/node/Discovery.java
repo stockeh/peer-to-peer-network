@@ -48,14 +48,14 @@ public class Discovery implements Node {
    *
    * @param args
    */
-  public static void main(String[] args) {
+  public static void main(String[] argas) {
     LOG.debug( "discovery node starting up at: " + new Date() );
 
     try ( ServerSocket serverSocket =
         new ServerSocket( Properties.DISCOVERY_PORT ) )
     {
       Discovery discovery = new Discovery();
-      ExecutorService executorService = Executors.newFixedThreadPool( 1 );
+      ExecutorService executorService = Executors.newCachedThreadPool();
 
       ( new Thread(
           new TCPServerThread( discovery, serverSocket, executorService ),

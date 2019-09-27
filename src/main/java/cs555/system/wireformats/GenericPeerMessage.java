@@ -137,6 +137,6 @@ public class GenericPeerMessage implements Event {
    */
   @Override
   public String toString() {
-    return type + " " + this.getConnection();
+    return type + " | " + peer.toString();
   }
 }

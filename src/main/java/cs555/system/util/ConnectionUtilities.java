@@ -5,6 +5,7 @@ import java.net.Socket;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeUnit;
 import cs555.system.metadata.PeerInformation;
 import cs555.system.node.Node;
 import cs555.system.transport.TCPConnection;
@@ -16,6 +17,8 @@ import cs555.system.transport.TCPConnection;
  *
  */
 public class ConnectionUtilities {
+
+  private static final Logger LOG = Logger.getInstance();
 
   private final Map<String, TCPConnection> temporaryConnections;
 
@@ -30,6 +33,15 @@ public class ConnectionUtilities {
   public ConnectionUtilities(ExecutorService executorService) {
     this.temporaryConnections = new HashMap<>();
     this.executorService = executorService;
+  }
+
+  /**
+   * 
+   * @param peer
+   * @param connection
+   */
+  public void addConnection(PeerInformation peer, TCPConnection connection) {
+    temporaryConnections.putIfAbsent( peer.getIdentifier(), connection );
   }
 
   /**
@@ -75,8 +87,19 @@ public class ConnectionUtilities {
   public void closeCachedConnections() {
     synchronized ( temporaryConnections )
     {
+      try
+      {
+        TimeUnit.SECONDS.sleep( 1 );
+      } catch ( InterruptedException e )
+      {
+        LOG.error(
+            "Unable to sleep before sending clearing all cached connections. "
+                + e.getMessage() );
+        e.printStackTrace();
+      }
       temporaryConnections.forEach( (k, v) ->
       {
+        LOG.debug( "CLOSING CONNECTION TO: " + k );
         v.close();
       } );
       temporaryConnections.clear();
