@@ -57,7 +57,6 @@ public class TCPServerThread implements Runnable {
       try
       {
         Socket incomingConnectionSocket = serverSocket.accept();
-        LOG.debug( "Sumbitting connection to thread pool" );
         ( new TCPConnection( node, incomingConnectionSocket ) )
             .submitTo( executorService );
       } catch ( IOException e )

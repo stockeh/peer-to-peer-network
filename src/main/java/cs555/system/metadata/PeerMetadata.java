@@ -16,6 +16,8 @@ public class PeerMetadata {
 
   private final PeerInformation self;
 
+  private final LeafSet leaf;
+
   private final Lock lock;
 
   private final Condition condition;
@@ -29,9 +31,27 @@ public class PeerMetadata {
   public PeerMetadata(String host, int port) {
     this.table = new RoutingTable();
     this.self = new PeerInformation( null, host, port );
+    this.leaf = new LeafSet( this.self );
     this.lock = new ReentrantLock();
     this.condition = lock.newCondition();
     this.initialized = false;
+  }
+
+  /**
+   * This peer is initialized after the establishing itself with the
+   * DHT. Thereafter, allowing other peers to connect.
+   * 
+   */
+  public void initialized() {
+    initialized = true;
+    try
+    {
+      lock.lock();
+      condition.signal();
+    } finally
+    {
+      lock.unlock();
+    }
   }
 
   /**
@@ -52,10 +72,26 @@ public class PeerMetadata {
 
   /**
    * 
+   * @return the leaf set for this peer
+   */
+  public LeafSet leaf() {
+    return leaf;
+  }
+  
+  /**
+   * 
    * @return
    */
   public Lock getLock() {
     return lock;
+  }
+
+  /**
+   * 
+   * @return
+   */
+  public boolean isInitialized() {
+    return initialized;
   }
 
   /**

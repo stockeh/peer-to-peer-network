@@ -29,4 +29,17 @@ public class IdentifierUtilitiesTest {
     assertEquals( expected.length, buf.length );
     assertArrayEquals( expected, buf );
   }
+
+  @Test
+  public void testIdentifierCompare() {
+    String l = "ABCD", r = "ABCC";
+    assertEquals( 1, l.compareTo( r ) );
+
+    r = "ABCE";
+    assertEquals( -1, l.compareTo( r ) );
+    
+    r = "ABCD";
+    assertEquals( 0, l.compareTo( r ) );
+  }
+
 }

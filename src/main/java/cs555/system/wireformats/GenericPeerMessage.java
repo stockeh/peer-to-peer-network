@@ -20,7 +20,7 @@ import cs555.system.util.MessageUtilities;
  * @author stock
  *
  */
-public class RegisterRequest implements Event {
+public class GenericPeerMessage implements Event {
 
   private int type;
 
@@ -34,7 +34,7 @@ public class RegisterRequest implements Event {
    * @param host
    * @param port
    */
-  public RegisterRequest(int type, PeerInformation peer) {
+  public GenericPeerMessage(int type, PeerInformation peer) {
     this.type = type;
     this.peer = peer;
   }
@@ -46,7 +46,7 @@ public class RegisterRequest implements Event {
    * @param marshalledBytes is the byte array of the class.
    * @throws IOException
    */
-  public RegisterRequest(byte[] marshalledBytes) throws IOException {
+  public GenericPeerMessage(byte[] marshalledBytes) throws IOException {
     ByteArrayInputStream inputStream =
         new ByteArrayInputStream( marshalledBytes );
     DataInputStream din =
@@ -66,6 +66,14 @@ public class RegisterRequest implements Event {
   @Override
   public int getType() {
     return type;
+  }
+
+  /**
+   * 
+   * @return the peer from the connection
+   */
+  public PeerInformation getPeer() {
+    return peer;
   }
 
   /**
@@ -129,6 +137,6 @@ public class RegisterRequest implements Event {
    */
   @Override
   public String toString() {
-    return type + " " + this.getConnection();
+    return type + " | " + peer.toString();
   }
 }

@@ -18,7 +18,7 @@ import cs555.system.util.MessageUtilities;
  * @author stock
  *
  */
-public class PeerInitializeLocation implements Event {
+public class JoinNetwork implements Event {
 
   private int type;
 
@@ -34,8 +34,8 @@ public class PeerInitializeLocation implements Event {
    * Default constructor -
    * 
    */
-  public PeerInitializeLocation(PeerInformation destination) {
-    this.type = Protocol.PEER_INITIALIZE_LOCATION;
+  public JoinNetwork(PeerInformation destination) {
+    this.type = Protocol.JOIN_NETWORK_REQUEST;
     this.destination = destination;
     this.table = new PeerInformation[ Constants.NUMBER_OF_ROWS ][ 16 ];
     this.leafSet = new PeerInformation[ Constants.LEAF_SET_SIZE ];
@@ -49,7 +49,7 @@ public class PeerInitializeLocation implements Event {
    * @param marshalledBytes is the byte array of the class.
    * @throws IOException
    */
-  public PeerInitializeLocation(byte[] marshalledBytes) throws IOException {
+  public JoinNetwork(byte[] marshalledBytes) throws IOException {
     ByteArrayInputStream inputStream =
         new ByteArrayInputStream( marshalledBytes );
     DataInputStream din =
@@ -206,7 +206,7 @@ public class PeerInitializeLocation implements Event {
 
   @Override
   public String toString() {
-    return "\n" + type;
+    return Integer.toString( type );
   }
 
 }

@@ -5,6 +5,7 @@ import java.net.Socket;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeUnit;
 import cs555.system.metadata.PeerInformation;
 import cs555.system.node.Node;
 import cs555.system.transport.TCPConnection;
@@ -16,6 +17,8 @@ import cs555.system.transport.TCPConnection;
  *
  */
 public class ConnectionUtilities {
+
+  private static final Logger LOG = Logger.getInstance();
 
   private final Map<String, TCPConnection> temporaryConnections;
 
@@ -33,6 +36,15 @@ public class ConnectionUtilities {
   }
 
   /**
+   * 
+   * @param peer
+   * @param connection
+   */
+  public void addConnection(PeerInformation peer, TCPConnection connection) {
+    temporaryConnections.putIfAbsent( peer.getIdentifier(), connection );
+  }
+
+  /**
    * Either establish a new or retrieve a cached connection made
    * previously.
    * 
@@ -46,20 +58,23 @@ public class ConnectionUtilities {
    * @throws NumberFormatException
    */
   public TCPConnection cacheConnection(Node node, PeerInformation peer,
-      boolean startConnection) throws NumberFormatException, IOException {
+      boolean startConnection) throws IOException {
 
     TCPConnection connection;
-    if ( temporaryConnections.containsKey( peer.getIdentifier() ) )
+    synchronized ( temporaryConnections )
     {
-      connection = temporaryConnections.get( peer.getIdentifier() );
-    } else
-    {
-      connection = ConnectionUtilities.establishConnection( node,
-          peer.getHost(), peer.getPort() );
-      temporaryConnections.put( peer.getIdentifier(), connection );
-      if ( startConnection )
+      if ( temporaryConnections.containsKey( peer.getIdentifier() ) )
       {
-        connection.submitTo( executorService );
+        connection = temporaryConnections.get( peer.getIdentifier() );
+      } else
+      {
+        connection = ConnectionUtilities.establishConnection( node,
+            peer.getHost(), peer.getPort() );
+        temporaryConnections.put( peer.getIdentifier(), connection );
+        if ( startConnection )
+        {
+          connection.submitTo( executorService );
+        }
       }
     }
     return connection;
@@ -70,11 +85,24 @@ public class ConnectionUtilities {
    * 
    */
   public void closeCachedConnections() {
-    temporaryConnections.forEach( (k, v) ->
+    synchronized ( temporaryConnections )
     {
-      v.close();
-    } );
-    temporaryConnections.clear();
+      try
+      {
+        TimeUnit.SECONDS.sleep( 1 );
+      } catch ( InterruptedException e )
+      {
+        LOG.error(
+            "Unable to sleep before sending clearing all cached connections. "
+                + e.getMessage() );
+        e.printStackTrace();
+      }
+      temporaryConnections.forEach( (k, v) ->
+      {
+        v.close();
+      } );
+      temporaryConnections.clear();
+    }
   }
 
   /**

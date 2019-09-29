@@ -18,7 +18,7 @@ import cs555.system.wireformats.DiscoverNodeResponse;
 import cs555.system.wireformats.Event;
 import cs555.system.wireformats.GenericMessage;
 import cs555.system.wireformats.Protocol;
-import cs555.system.wireformats.RegisterRequest;
+import cs555.system.wireformats.GenericPeerMessage;
 
 
 /**
@@ -48,14 +48,14 @@ public class Discovery implements Node {
    *
    * @param args
    */
-  public static void main(String[] args) {
+  public static void main(String[] argas) {
     LOG.debug( "discovery node starting up at: " + new Date() );
 
     try ( ServerSocket serverSocket =
         new ServerSocket( Properties.DISCOVERY_PORT ) )
     {
       Discovery discovery = new Discovery();
-      ExecutorService executorService = Executors.newFixedThreadPool( 1 );
+      ExecutorService executorService = Executors.newCachedThreadPool();
 
       ( new Thread(
           new TCPServerThread( discovery, serverSocket, executorService ),
@@ -73,6 +73,7 @@ public class Discovery implements Node {
   /**
    * Allow support for commands to be specified while the processes are
    * running.
+   * 
    */
   private void interact() {
     System.out.println(
@@ -135,7 +136,7 @@ public class Discovery implements Node {
    */
   private synchronized void registerRequestHandler(Event event,
       TCPConnection connection) {
-    RegisterRequest request = ( RegisterRequest ) event;
+    GenericPeerMessage request = ( GenericPeerMessage ) event;
     PeerInformation peer = new PeerInformation( request.getIdentifier(),
         request.getHost(), request.getPort() );
     if ( registeredNodes.contains( peer ) )
