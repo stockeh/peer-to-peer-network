@@ -1,6 +1,7 @@
 package cs555.system.util;
 
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 
 /**
  * 
@@ -97,6 +98,7 @@ public class IdentifierUtilities {
    * @param source
    * @param item
    * @param index
+   * 
    * @return 0 if they are same, otherwise the value of the item index
    */
   public static int compareIdentifiers(String source, String item, int index) {

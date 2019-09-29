@@ -16,6 +16,8 @@ public class PeerMetadata {
 
   private final PeerInformation self;
 
+  private final LeafSet leaf;
+
   private final Lock lock;
 
   private final Condition condition;
@@ -29,6 +31,7 @@ public class PeerMetadata {
   public PeerMetadata(String host, int port) {
     this.table = new RoutingTable();
     this.self = new PeerInformation( null, host, port );
+    this.leaf = new LeafSet( this.self );
     this.lock = new ReentrantLock();
     this.condition = lock.newCondition();
     this.initialized = false;
@@ -67,6 +70,14 @@ public class PeerMetadata {
     return table;
   }
 
+  /**
+   * 
+   * @return the leaf set for this peer
+   */
+  public LeafSet leaf() {
+    return leaf;
+  }
+  
   /**
    * 
    * @return

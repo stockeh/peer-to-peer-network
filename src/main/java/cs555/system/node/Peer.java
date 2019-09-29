@@ -3,6 +3,7 @@ package cs555.system.node;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.ServerSocket;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.Scanner;
@@ -320,25 +321,20 @@ public class Peer implements Node {
    * @param destCol
    */
   private void constructLeafSet(JoinNetwork request, int row, int destCol) {
+    int col;
     for ( int i = 1; i < 16; ++i )
     {
       if ( request.getLeafSetByIndex( 1 ) == null )
       {
-        PeerInformation right = metadata.table().getTableIndex( row,
-            Math.floorMod( destCol + 1, 16 ) );
-        if ( right != null )
-        {
-          request.setLeafSetIndex( right, 1 );
-        }
+        col = Math.floorMod( destCol + i, 16 );
+        request.setLeafSetIndex( metadata.table().getTableIndex( row, col ),
+            1 );
       }
       if ( request.getLeafSetByIndex( 0 ) == null )
       {
-        PeerInformation left = metadata.table().getTableIndex( row,
-            Math.floorMod( destCol - 1, 16 ) );
-        if ( left != null )
-        {
-          request.setLeafSetIndex( left, 1 );
-        }
+        col = Math.floorMod( destCol - i, 16 );
+        request.setLeafSetIndex( metadata.table().getTableIndex( row, col ),
+            0 );
       }
     }
   }
@@ -407,7 +403,15 @@ public class Peer implements Node {
             }
           }
         } );
+    System.out.println( "Leaf Set: " );
+    PeerInformation[] leafSet = new PeerInformation[ Constants.LEAF_SET_SIZE ];
+    Arrays.stream( request.getLeafSet() ).forEach( peer ->
+    {
+      System.out.println( peer.toString() );
+    } );
+
     connections.closeCachedConnections();
+
     // TODO: establish leaf-set
   }
 

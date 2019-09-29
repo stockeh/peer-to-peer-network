@@ -99,7 +99,6 @@ public class ConnectionUtilities {
       }
       temporaryConnections.forEach( (k, v) ->
       {
-        LOG.debug( "CLOSING CONNECTION TO: " + k );
         v.close();
       } );
       temporaryConnections.clear();
