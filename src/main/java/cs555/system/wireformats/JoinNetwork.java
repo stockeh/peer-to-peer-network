@@ -26,8 +26,6 @@ public class JoinNetwork implements Event {
 
   private PeerInformation[][] table;
 
-  private PeerInformation[] leafSet;
-
   private List<Short> networkTraceIndex;
 
   /**
@@ -38,7 +36,6 @@ public class JoinNetwork implements Event {
     this.type = Protocol.JOIN_NETWORK_REQUEST;
     this.destination = destination;
     this.table = new PeerInformation[ Constants.NUMBER_OF_ROWS ][ 16 ];
-    this.leafSet = new PeerInformation[ Constants.LEAF_SET_SIZE ];
     this.networkTraceIndex = new ArrayList<>();
   }
 
@@ -77,16 +74,6 @@ public class JoinNetwork implements Event {
       }
     }
 
-    this.leafSet = new PeerInformation[ Constants.LEAF_SET_SIZE ];
-
-    for ( int i = 0; i < Constants.LEAF_SET_SIZE; ++i )
-    {
-      if ( din.readBoolean() )
-      {
-        leafSet[ i ] = MessageUtilities.readPeerInformation( din );
-      }
-    }
-
     short len = din.readShort();
     this.networkTraceIndex = new ArrayList<>( len );
     for ( int i = 0; i < len; ++i )
@@ -110,16 +97,8 @@ public class JoinNetwork implements Event {
     return destination;
   }
 
-  public PeerInformation[] getLeafSet() {
-    return leafSet;
-  }
-
   public PeerInformation[][] getTable() {
     return table;
-  }
-
-  public PeerInformation getLeafSetByIndex(int index) {
-    return leafSet[ index ];
   }
 
   public List<Short> getNetworkTraceIndex() {
@@ -136,10 +115,6 @@ public class JoinNetwork implements Event {
 
   public void setTableRow(PeerInformation[] row) {
     table[ getRowIndex() ] = row;
-  }
-
-  public void setLeafSetIndex(PeerInformation leaf, int index) {
-    leafSet[ index ] = leaf;
   }
 
   /**
@@ -175,17 +150,6 @@ public class JoinNetwork implements Event {
             MessageUtilities.writePeerInformation( dout, peer );
           }
         }
-      }
-    }
-    for ( PeerInformation peer : leafSet )
-    {
-      if ( peer == null )
-      {
-        dout.writeBoolean( false );
-      } else
-      {
-        dout.writeBoolean( true );
-        MessageUtilities.writePeerInformation( dout, peer );
       }
     }
 

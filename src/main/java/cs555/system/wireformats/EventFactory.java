@@ -54,7 +54,8 @@ public class EventFactory {
     {
       case Protocol.REGISTER_REQUEST :
       case Protocol.UNREGISTER_REQUEST :
-      case Protocol.FORWARD_IDENTIFIER :
+      case Protocol.FORWARD_PEER_IDENTIFIER :
+      case Protocol.FORWARD_LEAF_IDENTIFIER :
         return new GenericPeerMessage( marshalledBytes );
 
       case Protocol.IDENTIFIER_COLLISION :

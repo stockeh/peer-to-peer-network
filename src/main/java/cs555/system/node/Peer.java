@@ -3,7 +3,6 @@ package cs555.system.node;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.ServerSocket;
-import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.Scanner;
@@ -182,8 +181,13 @@ public class Peer implements Node {
         join( event, connection );
         break;
 
-      case Protocol.FORWARD_IDENTIFIER :
+      case Protocol.FORWARD_PEER_IDENTIFIER :
         updateRoutingTable( event );
+        break;
+
+      case Protocol.FORWARD_LEAF_IDENTIFIER :
+        LOG.debug(
+            metadata.self().toString() + " connected to " + event.toString() );
         break;
 
     }
@@ -286,7 +290,6 @@ public class Peer implements Node {
         intermediate.getTCPSender().sendData( request.getBytes() );
       } else
       {
-        constructLeafSet( request, row, destCol );
         if ( isSourcePeer )
         {
           connection.getTCPSender().sendData( request.getBytes() );
@@ -320,22 +323,75 @@ public class Peer implements Node {
    * @param row
    * @param destCol
    */
-  private void constructLeafSet(JoinNetwork request, int row, int destCol) {
-    int col;
-    for ( int i = 1; i < 16; ++i )
+  private void constructLeafSet() {
+    PeerInformation cw = null, ccw = null;
+    int row = Constants.NUMBER_OF_ROWS - 1;
+    int selfCol, col;
+
+    rows: while ( row >= 0 )
     {
-      if ( request.getLeafSetByIndex( 1 ) == null )
+      selfCol =
+          Character.digit( metadata.self().getIdentifier().charAt( row ), 16 );
+
+      for ( int i = 1; i < 16; ++i )
       {
-        col = Math.floorMod( destCol + i, 16 );
-        request.setLeafSetIndex( metadata.table().getTableIndex( row, col ),
-            1 );
+        if ( cw == null )
+        {
+          col = Math.floorMod( selfCol + i, 16 );
+          cw = metadata.table().getTableIndex( row, col );
+          if ( cw == ccw )
+          {
+            cw = null;
+          }
+        }
+        if ( ccw == null )
+        {
+          col = Math.floorMod( selfCol - i, 16 );
+          ccw = metadata.table().getTableIndex( row, col );
+          if ( ccw == cw )
+          {
+            ccw = null;
+          }
+        }
+        if ( cw != null && ccw != null )
+        {
+          break rows;
+        }
       }
-      if ( request.getLeafSetByIndex( 0 ) == null )
-      {
-        col = Math.floorMod( destCol - i, 16 );
-        request.setLeafSetIndex( metadata.table().getTableIndex( row, col ),
-            0 );
-      }
+      --row;
+    }
+    // Case for two peers
+    if ( cw == null )
+    {
+      cw = ccw;
+    } else if ( ccw == null )
+    {
+      ccw = cw;
+    }
+    LOG.info( ( new StringBuilder( "Leaf Set: { " ).append( cw.getIdentifier() )
+        .append( " <- " ).append( "self" ).append( " -> " )
+        .append( ccw.getIdentifier() ).append( " }" ).toString() ) );
+    try
+    {
+      byte[] request = new GenericPeerMessage( Protocol.FORWARD_LEAF_IDENTIFIER,
+          metadata.self() ).getBytes();
+      TCPConnection connection = ConnectionUtilities.establishConnection( this,
+          cw.getHost(), cw.getPort() );
+      connection.submitTo( executorService );
+      metadata.leaf().setLeaf( cw, connection, true );
+      connection.getTCPSender().sendData( request );
+
+      connection = ConnectionUtilities.establishConnection( this, ccw.getHost(),
+          ccw.getPort() );
+      connection.submitTo( executorService );
+      metadata.leaf().setLeaf( ccw, connection, false );
+      connection.getTCPSender().sendData( request );
+
+    } catch ( IOException e )
+    {
+      LOG.error(
+          "Unable to send leaf set request to peers. " + e.getMessage() );
+      e.printStackTrace();
     }
   }
 
@@ -371,12 +427,12 @@ public class Peer implements Node {
     // traced in the join request, and therefore the calling connection.
     connections.addConnection( trace, lastPeerConnection );
     LOG.info( sb.toString() );
+
     byte[] data;
     try
     {
-      data =
-          new GenericPeerMessage( Protocol.FORWARD_IDENTIFIER, metadata.self() )
-              .getBytes();
+      data = new GenericPeerMessage( Protocol.FORWARD_PEER_IDENTIFIER,
+          metadata.self() ).getBytes();
     } catch ( IOException e )
     {
       LOG.error( "Unable to send create output stream for message. "
@@ -403,16 +459,9 @@ public class Peer implements Node {
             }
           }
         } );
-    System.out.println( "Leaf Set: " );
-    PeerInformation[] leafSet = new PeerInformation[ Constants.LEAF_SET_SIZE ];
-    Arrays.stream( request.getLeafSet() ).forEach( peer ->
-    {
-      System.out.println( peer.toString() );
-    } );
-
     connections.closeCachedConnections();
 
-    // TODO: establish leaf-set
+    constructLeafSet();
   }
 
   /**

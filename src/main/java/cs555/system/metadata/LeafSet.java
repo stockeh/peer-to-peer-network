@@ -55,8 +55,6 @@ public class LeafSet {
 
     int o_ccw = o ^ ccw;
     
-    
-
     return between;
   }
 
