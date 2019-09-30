@@ -113,8 +113,8 @@ public class Peer implements Node {
     {
       metadata.setIdentifier( IdentifierUtilities.timestampToIdentifier() );
     }
-    GenericPeerMessage request =
-        new GenericPeerMessage( Protocol.REGISTER_REQUEST, metadata.self() );
+    GenericPeerMessage request = new GenericPeerMessage(
+        Protocol.REGISTER_REQUEST, metadata.self(), false );
     connection.getTCPSender().sendData( request.getBytes() );
   }
 
@@ -186,11 +186,22 @@ public class Peer implements Node {
         break;
 
       case Protocol.FORWARD_LEAF_IDENTIFIER :
-        LOG.debug(
-            metadata.self().toString() + " connected to " + event.toString() );
+        updateLeafSet( event, connection );
         break;
 
     }
+  }
+
+  /**
+   * Update the leaf set from a peer who joined the network
+   * 
+   * @param event
+   * @param connection
+   */
+  private synchronized void updateLeafSet(Event event, TCPConnection connection) {
+    GenericPeerMessage request = ( GenericPeerMessage ) event;
+    metadata.leaf().setLeaf( request.getPeer(), connection, request.getFlag() );
+    LOG.info( metadata.leaf().toString() );
   }
 
   /**
@@ -337,20 +348,20 @@ public class Peer implements Node {
       {
         if ( cw == null )
         {
-          col = Math.floorMod( selfCol + i, 16 );
-          cw = metadata.table().getTableIndex( row, col );
-          if ( cw == ccw )
+          col = selfCol + i;
+          if ( col < 16 || row == 0 )
           {
-            cw = null;
+            col = Math.floorMod( col, 16 );
+            cw = metadata.table().getTableIndex( row, col );
           }
         }
         if ( ccw == null )
         {
-          col = Math.floorMod( selfCol - i, 16 );
-          ccw = metadata.table().getTableIndex( row, col );
-          if ( ccw == cw )
+          col = selfCol - i;
+          if ( col >= 0 || row == 0 )
           {
-            ccw = null;
+            col = Math.floorMod( col, 16 );
+            ccw = metadata.table().getTableIndex( row, col );
           }
         }
         if ( cw != null && ccw != null )
@@ -360,32 +371,23 @@ public class Peer implements Node {
       }
       --row;
     }
-    // Case for two peers
-    if ( cw == null )
-    {
-      cw = ccw;
-    } else if ( ccw == null )
-    {
-      ccw = cw;
-    }
-    LOG.info( ( new StringBuilder( "Leaf Set: { " ).append( cw.getIdentifier() )
-        .append( " <- " ).append( "self" ).append( " -> " )
-        .append( ccw.getIdentifier() ).append( " }" ).toString() ) );
     try
     {
-      byte[] request = new GenericPeerMessage( Protocol.FORWARD_LEAF_IDENTIFIER,
-          metadata.self() ).getBytes();
+      // request flag false for cw, true for ccw
+      GenericPeerMessage request = new GenericPeerMessage(
+          Protocol.FORWARD_LEAF_IDENTIFIER, metadata.self(), false );
       TCPConnection connection = ConnectionUtilities.establishConnection( this,
           cw.getHost(), cw.getPort() );
       connection.submitTo( executorService );
       metadata.leaf().setLeaf( cw, connection, true );
-      connection.getTCPSender().sendData( request );
+      connection.getTCPSender().sendData( request.getBytes() );
 
       connection = ConnectionUtilities.establishConnection( this, ccw.getHost(),
           ccw.getPort() );
       connection.submitTo( executorService );
       metadata.leaf().setLeaf( ccw, connection, false );
-      connection.getTCPSender().sendData( request );
+      request.setFlag( true );
+      connection.getTCPSender().sendData( request.getBytes() );
 
     } catch ( IOException e )
     {
@@ -393,6 +395,7 @@ public class Peer implements Node {
           "Unable to send leaf set request to peers. " + e.getMessage() );
       e.printStackTrace();
     }
+    LOG.info( metadata.leaf().toString() );
   }
 
   /**
@@ -432,7 +435,7 @@ public class Peer implements Node {
     try
     {
       data = new GenericPeerMessage( Protocol.FORWARD_PEER_IDENTIFIER,
-          metadata.self() ).getBytes();
+          metadata.self(), false ).getBytes();
     } catch ( IOException e )
     {
       LOG.error( "Unable to send create output stream for message. "

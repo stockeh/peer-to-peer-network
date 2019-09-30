@@ -26,17 +26,19 @@ public class GenericPeerMessage implements Event {
 
   private PeerInformation peer;
 
+  private boolean flag;
+
   /**
    * Default constructor - create a new register or unregister message.
    * 
    * @param type Specified for use of register or unregister message.
-   * @param identifier
-   * @param host
-   * @param port
+   * @param peer
+   * @param flag
    */
-  public GenericPeerMessage(int type, PeerInformation peer) {
+  public GenericPeerMessage(int type, PeerInformation peer, boolean flag) {
     this.type = type;
     this.peer = peer;
+    this.flag = flag;
   }
 
   /**
@@ -55,6 +57,8 @@ public class GenericPeerMessage implements Event {
     this.type = din.readInt();
 
     this.peer = MessageUtilities.readPeerInformation( din );
+
+    this.flag = din.readBoolean();
 
     inputStream.close();
     din.close();
@@ -77,12 +81,11 @@ public class GenericPeerMessage implements Event {
   }
 
   /**
-   * Converts the IP Address and Port to a readable format.
    * 
-   * @return Returns a string in the format <code>host:port</code>
+   * @return the boolean flag for the message
    */
-  public String getConnection() {
-    return peer.getHost() + ":" + peer.getPort();
+  public boolean getFlag() {
+    return flag;
   }
 
   /**
@@ -111,6 +114,15 @@ public class GenericPeerMessage implements Event {
   }
 
   /**
+   * Set the flag for the message
+   * 
+   * @param flag
+   */
+  public void setFlag(boolean flag) {
+    this.flag = flag;
+  }
+
+  /**
    * {@inheritDoc}
    */
   @Override
@@ -123,6 +135,8 @@ public class GenericPeerMessage implements Event {
     dout.writeInt( type );
 
     MessageUtilities.writePeerInformation( dout, peer );
+
+    dout.writeBoolean( flag );
 
     dout.flush();
     marshalledBytes = outputStream.toByteArray();
