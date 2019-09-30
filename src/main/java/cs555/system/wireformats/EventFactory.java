@@ -68,6 +68,12 @@ public class EventFactory {
       case Protocol.JOIN_NETWORK_REQUEST :
         return new JoinNetwork( marshalledBytes );
 
+      case Protocol.DISCOVER_PEER_REQUEST :
+        return new DiscoverPeerRequest( marshalledBytes );
+
+      case Protocol.STORE_DATA_REQUEST :
+        return new DataTransfer( marshalledBytes );
+
       default :
         LOG.error( "Event could not be created. "
             + ByteBuffer.wrap( marshalledBytes ).getInt() );

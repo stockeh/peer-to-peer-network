@@ -5,10 +5,10 @@ import java.net.ServerSocket;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Random;
 import java.util.Scanner;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadLocalRandom;
 import cs555.system.metadata.PeerInformation;
 import cs555.system.transport.TCPConnection;
 import cs555.system.transport.TCPServerThread;
@@ -17,8 +17,8 @@ import cs555.system.util.Properties;
 import cs555.system.wireformats.DiscoverNodeResponse;
 import cs555.system.wireformats.Event;
 import cs555.system.wireformats.GenericMessage;
-import cs555.system.wireformats.Protocol;
 import cs555.system.wireformats.GenericPeerMessage;
+import cs555.system.wireformats.Protocol;
 
 
 /**
@@ -34,6 +34,8 @@ public class Discovery implements Node {
 
   private static final String HELP = "help";
 
+  private final Random random;
+
   private List<PeerInformation> registeredNodes;
 
   /**
@@ -41,6 +43,7 @@ public class Discovery implements Node {
    */
   public Discovery() {
     this.registeredNodes = new ArrayList<>();
+    this.random = new Random();
   }
 
   /**
@@ -178,7 +181,7 @@ public class Discovery implements Node {
       response = new DiscoverNodeResponse();
     } else
     {
-      int index = ThreadLocalRandom.current().nextInt( numberOfNodes );
+      int index = random.nextInt( numberOfNodes );
       PeerInformation source = registeredNodes.get( index );
       response = new DiscoverNodeResponse( source );
     }
@@ -187,7 +190,7 @@ public class Discovery implements Node {
       connection.getTCPSender().sendData( response.getBytes() );
     } catch ( IOException e )
     {
-      LOG.error( "Unable to send response message to peer. " + e.getMessage() );
+      LOG.error( "Unable to send response message to node. " + e.getMessage() );
       e.printStackTrace();
     }
   }

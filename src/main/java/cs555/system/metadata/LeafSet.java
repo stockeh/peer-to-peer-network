@@ -27,6 +27,15 @@ public class LeafSet {
 
   /**
    * 
+   * @return true if {@code cw} and {@code ccw} are non {@code null},
+   *         false otherwise.
+   */
+  public boolean isPopulated() {
+    return cw != null && ccw != null;
+  }
+
+  /**
+   * 
    * 
    * @param peer
    * @param connection
@@ -38,14 +47,14 @@ public class LeafSet {
     {
       if ( this.cw != null )
       {
-        this.cw.getTCPConnection().close();
+        this.cw.getConnection().close();
       }
       this.cw = new Leaf( peer, connection );
     } else
     {
       if ( this.ccw != null )
       {
-        this.ccw.getTCPConnection().close();
+        this.ccw.getConnection().close();
       }
       this.ccw = new Leaf( peer, connection );
     }
@@ -114,7 +123,7 @@ public class LeafSet {
    * @author stock
    *
    */
-  protected static class Leaf {
+  public static class Leaf {
 
     private final PeerInformation p;
 
@@ -125,11 +134,11 @@ public class LeafSet {
       this.c = c;
     }
 
-    protected PeerInformation getPeer() {
+    public PeerInformation getPeer() {
       return p;
     }
 
-    protected TCPConnection getTCPConnection() {
+    public TCPConnection getConnection() {
       return c;
     }
 

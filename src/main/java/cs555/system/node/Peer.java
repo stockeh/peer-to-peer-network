@@ -9,6 +9,7 @@ import java.util.Scanner;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.stream.Stream;
+import cs555.system.metadata.LeafSet.Leaf;
 import cs555.system.metadata.PeerInformation;
 import cs555.system.metadata.PeerMetadata;
 import cs555.system.transport.TCPConnection;
@@ -19,6 +20,7 @@ import cs555.system.util.IdentifierUtilities;
 import cs555.system.util.Logger;
 import cs555.system.util.Properties;
 import cs555.system.wireformats.DiscoverNodeResponse;
+import cs555.system.wireformats.DiscoverPeerRequest;
 import cs555.system.wireformats.Event;
 import cs555.system.wireformats.GenericPeerMessage;
 import cs555.system.wireformats.JoinNetwork;
@@ -189,7 +191,56 @@ public class Peer implements Node {
         updateLeafSet( event, connection );
         break;
 
+      case Protocol.DISCOVER_PEER_REQUEST :
+        discoverPeerHandler( event, connection );
+        break;
     }
+  }
+
+  /**
+   * 
+   * @param event
+   * @param connection
+   */
+  private void discoverPeerHandler(Event event, TCPConnection connection) {
+    DiscoverPeerRequest request = ( DiscoverPeerRequest ) event;
+    if ( request.getNetworkTraceIdentifiers().size() == 0 )
+    {
+      connection.close();
+    }
+    request.addNetworkTraceRoute( metadata.self().getIdentifier() );
+
+    Leaf closest = metadata.leaf().getClosest( request.getDestination() );
+    try
+    {
+      if ( closest != null )
+      {
+        if ( closest.getPeer().equals( metadata.self() ) )
+        {
+          connection = ConnectionUtilities.establishConnection( this,
+              request.getDestination().getHost(),
+              request.getDestination().getPort() );
+        } else
+        {
+          connection = closest.getConnection();
+        }
+      } else
+      {
+        PeerInformation peer = lookup( request.getDestination() );
+        connection = ConnectionUtilities.establishConnection( this,
+            peer.getHost(), peer.getPort() );
+      }
+      connection.getTCPSender().sendData( request.getBytes() );
+    } catch ( IOException e )
+    {
+      LOG.error( "Unable to send message. " + e.getMessage() );
+      e.printStackTrace();
+    }
+  }
+
+  private PeerInformation lookup(PeerInformation destination) {
+    // TODO: Consult DHT for closest peer to destination
+    return null;
   }
 
   /**
@@ -198,10 +249,14 @@ public class Peer implements Node {
    * @param event
    * @param connection
    */
-  private synchronized void updateLeafSet(Event event, TCPConnection connection) {
+  private synchronized void updateLeafSet(Event event,
+      TCPConnection connection) {
     GenericPeerMessage request = ( GenericPeerMessage ) event;
     metadata.leaf().setLeaf( request.getPeer(), connection, request.getFlag() );
-    LOG.info( metadata.leaf().toString() );
+    if ( metadata.leaf().isPopulated() )
+    {
+      LOG.info( metadata.leaf().toString() );
+    }
   }
 
   /**

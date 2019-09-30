@@ -1,7 +1,6 @@
 package cs555.system.util;
 
 import java.nio.ByteBuffer;
-import java.util.Arrays;
 
 /**
  * 
@@ -72,7 +71,7 @@ public class IdentifierUtilities {
    * 
    * @return a <tt>String</tt> of 16-bit hexadecimal
    */
-  private static String CRC16CCITT(byte[] bytes) {
+  public static String CRC16CCITT(byte[] bytes) {
     final int polynomial = 0x1021;
     int crc = 0xFFFF;
 
