@@ -1,6 +1,7 @@
 package cs555.system.metadata;
 
 import cs555.system.transport.TCPConnection;
+import cs555.system.util.Constants;
 
 /**
  * 
@@ -51,21 +52,30 @@ public class LeafSet {
   }
 
   /**
+   * Check if an integer falls within two end points on a circular ring
+   * of clockwise increasing values.
    * 
-   * 
-   * @param o
-   * @param a
-   * @param b
-   * @return
+   * @param o 'other' item
+   * @param a most clockwise item
+   * @param b less clockwise item
+   * @return true if {@code o} is between {@code a} and {@code b}
    */
-  public boolean isBetween(int o, int a, int b) {
+  protected boolean isBetween(int o, int a, int b) {
     return o > a ^ o < b ^ b < a;
   }
 
   /**
-   * 
-   * @param other
-   * @return
+   * Check if the {@code other} peer falls within this leaf set, and
+   * returns the {@code Leaf} that is closest by identifier to
+   * {@code other}.
+   * <p>
+   * <b>IMPORTANT:</b> assumes each of the peer identifiers are 16-bits.
+   * </p>
+   *
+   * @param other peer to check if within bounds
+   * @return the {@code Leaf} that is closest by identifier to
+   *         {@code other}, <b>or</b> {@code null} if {@code other}
+   *         falls outside the leaf set boundaries.
    */
   public Leaf getClosest(PeerInformation other) {
     int o = Integer.parseInt( other.getIdentifier(), 16 );
@@ -73,26 +83,19 @@ public class LeafSet {
     int cw = Integer.parseInt( this.cw.getPeer().getIdentifier(), 16 );
     int ccw = Integer.parseInt( this.ccw.getPeer().getIdentifier(), 16 );
 
+    int mod = ( int ) Math.pow( 2, Constants.IDENTIFIER_BIT_LENGTH );
     if ( isBetween( o, cw, s ) )
     {
-      int o_cw = o > cw ? Math.floorMod( ( cw - o ), 16 ) : o - cw;
-      int o_s = o < s ? Math.floorMod( ( s - o ), 16 ) : o - s;
+      int o_cw = ( o > cw ) ? Math.floorMod( ( cw - o ), mod ) : cw - o;
+      int o_s = ( o < s ) ? Math.floorMod( ( o - s ), mod ) : o - s;
       return o_cw < o_s ? this.cw : new Leaf( self, null );
     } else if ( isBetween( o, s, ccw ) )
     {
-      int o_ccw = o < ccw ? Math.floorMod( ( o - ccw ), 16 ) : o - ccw;
-      int o_s = o > s ? Math.floorMod( ( o - s ), 16 ) : s - o;
+      int o_ccw = ( o < ccw ) ? Math.floorMod( ( o - ccw ), mod ) : o - ccw;
+      int o_s = ( o > s ) ? Math.floorMod( ( s - o ), mod ) : s - o;
       return o_ccw < o_s ? this.ccw : new Leaf( self, null );
     }
     return null;
-  }
-
-  public Leaf getCW() {
-    return cw;
-  }
-
-  public Leaf getCCW() {
-    return ccw;
   }
 
   /**
@@ -106,6 +109,11 @@ public class LeafSet {
         .append( ccw.getPeer().getIdentifier() ).append( " }" ).toString();
   }
 
+  /**
+   * 
+   * @author stock
+   *
+   */
   protected static class Leaf {
 
     private final PeerInformation p;
