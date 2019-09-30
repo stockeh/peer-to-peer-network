@@ -63,7 +63,8 @@ public class TCPConnection {
    * @param executorService to submit the receiver to
    */
   public void submitTo(ExecutorService executorService) {
-    executorService.submit( this.receiver );
+    // executorService.submit( this.receiver );
+    new Thread( this.receiver ).start();
   }
 
   /**

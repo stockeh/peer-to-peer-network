@@ -10,7 +10,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import cs555.system.metadata.PeerInformation;
-import cs555.system.util.Constants;
 import cs555.system.util.MessageUtilities;
 
 /**
@@ -18,25 +17,22 @@ import cs555.system.util.MessageUtilities;
  * @author stock
  *
  */
-public class JoinNetwork implements Event {
+public class DiscoverPeerRequest implements Event {
 
   private int type;
 
   private PeerInformation destination;
 
-  private PeerInformation[][] table;
-
-  private List<Short> networkTraceIndex;
+  private List<String> networkTraceIdentifiers;
 
   /**
    * Default constructor -
    * 
    */
-  public JoinNetwork(PeerInformation destination) {
-    this.type = Protocol.JOIN_NETWORK_REQUEST;
+  public DiscoverPeerRequest(PeerInformation destination) {
+    this.type = Protocol.DISCOVER_PEER_REQUEST;
     this.destination = destination;
-    this.table = new PeerInformation[ Constants.NUMBER_OF_ROWS ][ 16 ];
-    this.networkTraceIndex = new ArrayList<>();
+    this.networkTraceIdentifiers = new ArrayList<>();
   }
 
   /**
@@ -46,7 +42,7 @@ public class JoinNetwork implements Event {
    * @param marshalledBytes is the byte array of the class.
    * @throws IOException
    */
-  public JoinNetwork(byte[] marshalledBytes) throws IOException {
+  public DiscoverPeerRequest(byte[] marshalledBytes) throws IOException {
     ByteArrayInputStream inputStream =
         new ByteArrayInputStream( marshalledBytes );
     DataInputStream din =
@@ -56,31 +52,17 @@ public class JoinNetwork implements Event {
 
     this.destination = MessageUtilities.readPeerInformation( din );
 
-    this.table = new PeerInformation[ Constants.NUMBER_OF_ROWS ][ 16 ];
-
-    for ( int row = 0; row < Constants.NUMBER_OF_ROWS; ++row )
-    {
-      if ( din.readBoolean() )
-      {
-        table[ row ] = new PeerInformation[ 16 ];
-
-        for ( int i = 0; i < 16; ++i )
-        {
-          if ( din.readBoolean() )
-          {
-            table[ row ][ i ] = MessageUtilities.readPeerInformation( din );
-          }
-        }
-      }
-    }
-
     short len = din.readShort();
-    this.networkTraceIndex = new ArrayList<>( len );
+    this.networkTraceIdentifiers = new ArrayList<>( len );
+    int identifierLength;
+    byte[] identifier;
     for ( int i = 0; i < len; ++i )
     {
-      networkTraceIndex.add( din.readShort() );
+      identifierLength = din.readInt();
+      identifier = new byte[ identifierLength ];
+      din.readFully( identifier );
+      networkTraceIdentifiers.add( new String( identifier ) );
     }
-
     inputStream.close();
     din.close();
   }
@@ -97,24 +79,12 @@ public class JoinNetwork implements Event {
     return destination;
   }
 
-  public PeerInformation[][] getTable() {
-    return table;
+  public List<String> getNetworkTraceIdentifiers() {
+    return networkTraceIdentifiers;
   }
 
-  public List<Short> getNetworkTraceIndex() {
-    return networkTraceIndex;
-  }
-
-  public int getRowIndex() {
-    return networkTraceIndex.size();
-  }
-
-  public void addNetworkTraceRoute(int rowIndex) {
-    networkTraceIndex.add( ( short ) rowIndex );
-  }
-
-  public void setTableRow(PeerInformation[] row) {
-    table[ getRowIndex() ] = row;
+  public void addNetworkTraceRoute(String s) {
+    networkTraceIdentifiers.add( s );
   }
 
   /**
@@ -131,33 +101,13 @@ public class JoinNetwork implements Event {
 
     MessageUtilities.writePeerInformation( dout, destination );
 
-    for ( PeerInformation[] row : table )
-    {
-      if ( row == null )
-      {
-        dout.writeBoolean( false );
-      } else
-      {
-        dout.writeBoolean( true );
-        for ( PeerInformation peer : row )
-        {
-          if ( peer == null )
-          {
-            dout.writeBoolean( false );
-          } else
-          {
-            dout.writeBoolean( true );
-            MessageUtilities.writePeerInformation( dout, peer );
-          }
-        }
-      }
-    }
+    dout.writeShort( networkTraceIdentifiers.size() );
 
-    dout.writeShort( networkTraceIndex.size() );
-
-    for ( Short s : networkTraceIndex )
+    for ( String s : networkTraceIdentifiers )
     {
-      dout.writeShort( s );
+      byte[] identifierBytes = s.getBytes();
+      dout.writeInt( identifierBytes.length );
+      dout.write( identifierBytes );
     }
 
     dout.flush();
@@ -172,5 +122,4 @@ public class JoinNetwork implements Event {
   public String toString() {
     return Integer.toString( type );
   }
-
 }

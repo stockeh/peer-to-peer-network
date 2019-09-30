@@ -54,7 +54,8 @@ public class EventFactory {
     {
       case Protocol.REGISTER_REQUEST :
       case Protocol.UNREGISTER_REQUEST :
-      case Protocol.FORWARD_IDENTIFIER :
+      case Protocol.FORWARD_PEER_IDENTIFIER :
+      case Protocol.FORWARD_LEAF_IDENTIFIER :
         return new GenericPeerMessage( marshalledBytes );
 
       case Protocol.IDENTIFIER_COLLISION :
@@ -66,6 +67,12 @@ public class EventFactory {
 
       case Protocol.JOIN_NETWORK_REQUEST :
         return new JoinNetwork( marshalledBytes );
+
+      case Protocol.DISCOVER_PEER_REQUEST :
+        return new DiscoverPeerRequest( marshalledBytes );
+
+      case Protocol.STORE_DATA_REQUEST :
+        return new DataTransfer( marshalledBytes );
 
       default :
         LOG.error( "Event could not be created. "

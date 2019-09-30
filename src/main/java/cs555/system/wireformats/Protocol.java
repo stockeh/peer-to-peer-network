@@ -21,6 +21,19 @@ public interface Protocol {
 
   final int JOIN_NETWORK_REQUEST = 5;
 
-  final int FORWARD_IDENTIFIER = 6;
+  final int FORWARD_PEER_IDENTIFIER = 6;
 
+  final int FORWARD_LEAF_IDENTIFIER = 7;
+
+  final int DISCOVER_PEER_REQUEST = 8;
+
+  final int DISCOVER_PEER_RESPONSE = 9;
+
+  final int STORE_DATA_REQUEST = 10;
+
+  final int STORE_DATA_RESPONSE = 11;
+
+  final int READ_DATA_REQUEST = 12;
+
+  final int READ_DATA_RESPONSE = 13;
 }
