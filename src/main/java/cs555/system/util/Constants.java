@@ -12,6 +12,10 @@ public interface Constants {
 
   final boolean FAILURE = false;
 
+  final boolean CLOCKWISE = true;
+
+  final boolean COUNTER_CLOCKWISE = false;
+
   final int IDENTIFIER_BIT_LENGTH = 16;
 
   final int NUMBER_OF_ROWS = IDENTIFIER_BIT_LENGTH / 4;

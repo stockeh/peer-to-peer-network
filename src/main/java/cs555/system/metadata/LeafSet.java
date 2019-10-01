@@ -40,29 +40,18 @@ public class LeafSet {
   }
 
   /**
-   * Set the connection with either the clockwise or counter clockwise
-   * connection. The previous connection is removed, if it exists.
+   * Set the peer with either the clockwise or counter clockwise peer.
    * 
    * @param peer
-   * @param connection
    * @param cw true to update the clockwise peer, false otherwise
    */
-  public void setLeaf(PeerInformation peer, TCPConnection connection,
-      boolean cw) {
+  public void setLeaf(PeerInformation peer, boolean cw) {
     if ( cw )
     {
-      if ( this.cw != null )
-      {
-        this.cw.getConnection().close();
-      }
-      this.cw = new Leaf( peer, connection );
+      this.cw = new Leaf( peer );
     } else
     {
-      if ( this.ccw != null )
-      {
-        this.ccw.getConnection().close();
-      }
-      this.ccw = new Leaf( peer, connection );
+      this.ccw = new Leaf( peer );
     }
   }
 
@@ -135,6 +124,11 @@ public class LeafSet {
     private final PeerInformation p;
 
     private final TCPConnection c;
+
+    private Leaf(PeerInformation p) {
+      this.p = p;
+      this.c = null;
+    }
 
     private Leaf(PeerInformation p, TCPConnection c) {
       this.p = p;
