@@ -1,8 +1,12 @@
 package cs555.system.node;
 
+import java.io.File;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.ServerSocket;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Date;
 import java.util.List;
 import java.util.Scanner;
@@ -19,6 +23,7 @@ import cs555.system.util.Constants;
 import cs555.system.util.IdentifierUtilities;
 import cs555.system.util.Logger;
 import cs555.system.util.Properties;
+import cs555.system.wireformats.DataTransfer;
 import cs555.system.wireformats.DiscoverNodeResponse;
 import cs555.system.wireformats.DiscoverPeerRequest;
 import cs555.system.wireformats.Event;
@@ -194,6 +199,48 @@ public class Peer implements Node {
       case Protocol.DISCOVER_PEER_REQUEST :
         discoverPeerHandler( event, connection );
         break;
+
+      case Protocol.STORE_DATA_REQUEST :
+        write( event, connection );
+        break;
+    }
+  }
+
+  /**
+   * Process an incoming file by saving it to disk, and responding to
+   * the Store.
+   * 
+   * @param event
+   * @param connection
+   */
+  private void write(Event event, TCPConnection connection) {
+    DataTransfer request = ( DataTransfer ) event;
+    String fileSystemPath =
+        request.getFileSystemPath() + "-" + metadata.self().getConnection();
+    Path path =
+        Paths.get( File.separator, "tmp", "stock", "pastry", fileSystemPath );
+    boolean success = true;
+    try
+    {
+      Files.createDirectories( path.getParent() );
+      Files.write( path, request.getData() );
+      LOG.info( "Finished writing " + fileSystemPath + " to disk." );
+    } catch ( IOException e )
+    {
+      LOG.error(
+          "Unable to save " + fileSystemPath + " to disk. " + e.getMessage() );
+      e.printStackTrace();
+      success = false;
+    }
+    try
+    {
+      connection.getTCPSender()
+          .sendData( ( new GenericPeerMessage( Protocol.STORE_DATA_RESPONSE,
+              metadata.self(), success ) ).getBytes() );
+    } catch ( IOException e )
+    {
+      LOG.error( "Unable to send message to store. " + e.getMessage() );
+      e.printStackTrace();
     }
   }
 
@@ -210,7 +257,7 @@ public class Peer implements Node {
     }
     request.addNetworkTraceRoute( metadata.self().getIdentifier() );
 
-    Leaf closest = metadata.leaf().getClosest( request.getDestination() );
+    Leaf closest = metadata.leaf().getClosestLeaf( request.getDestination() );
     try
     {
       if ( closest != null )
@@ -220,13 +267,15 @@ public class Peer implements Node {
           connection = ConnectionUtilities.establishConnection( this,
               request.getDestination().getHost(),
               request.getDestination().getPort() );
+          connection.submitTo( executorService );
         } else
         {
           connection = closest.getConnection();
         }
       } else
       {
-        PeerInformation peer = lookup( request.getDestination() );
+        connection.close();
+        PeerInformation peer = lookup( request );
         connection = ConnectionUtilities.establishConnection( this,
             peer.getHost(), peer.getPort() );
       }
@@ -238,9 +287,72 @@ public class Peer implements Node {
     }
   }
 
-  private PeerInformation lookup(PeerInformation destination) {
-    // TODO: Consult DHT for closest peer to destination
-    return null;
+  /**
+   * Consult DHT for closest peer to destination
+   * 
+   * 
+   * @param request
+   * @return
+   */
+  private PeerInformation lookup(DiscoverPeerRequest request) {
+    int row = request.getRow();
+
+    int selfCol =
+        Character.digit( metadata.self().getIdentifier().charAt( row ), 16 );
+    int destCol = Character
+        .digit( request.getDestination().getIdentifier().charAt( row ), 16 );
+
+    if ( selfCol == destCol )
+    {
+      request.incrementRow();
+      return lookup( request );
+    } else
+    {
+      PeerInformation peer = metadata.table().getTableIndex( row, destCol );
+      if ( peer != null )
+      {
+        return peer;
+      } else
+      {
+        int dest =
+            Integer.parseInt( request.getDestination().getIdentifier(), 16 );
+        int diff = Integer.MAX_VALUE, other, temp_diff;
+        PeerInformation closest = null, temp;
+        for ( ; row < 4; ++row )
+        {
+          for ( int i = 1; i < 8; ++i )
+          {
+            // clockwise
+            int col = ( destCol + i ) & 0xF;
+            temp = metadata.table().getTableIndex( row, col );
+            if ( temp != null )
+            {
+              other = Integer.parseInt( temp.getIdentifier(), 16 );
+              temp_diff = ( other - dest ) & 0xFFFF;
+              if ( temp_diff < diff )
+              {
+                diff = temp_diff;
+                closest = temp;
+              }
+            }
+            // counter-clockwise
+            col = ( destCol - i ) & 0xF;
+            temp = metadata.table().getTableIndex( row, col );
+            if ( temp != null )
+            {
+              other = Integer.parseInt( temp.getIdentifier(), 16 );
+              temp_diff = ( dest - other ) & 0xFFFF;
+              if ( temp_diff < diff )
+              {
+                diff = temp_diff;
+                closest = temp;
+              }
+            }
+          }
+        }
+        return closest;
+      }
+    }
   }
 
   /**
@@ -406,7 +518,7 @@ public class Peer implements Node {
           col = selfCol + i;
           if ( col < 16 || row == 0 )
           {
-            col = Math.floorMod( col, 16 );
+            col = col & 0xF;
             cw = metadata.table().getTableIndex( row, col );
           }
         }
@@ -415,7 +527,7 @@ public class Peer implements Node {
           col = selfCol - i;
           if ( col >= 0 || row == 0 )
           {
-            col = Math.floorMod( col, 16 );
+            col = col & 0xF;
             ccw = metadata.table().getTableIndex( row, col );
           }
         }

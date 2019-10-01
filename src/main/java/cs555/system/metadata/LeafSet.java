@@ -1,7 +1,6 @@
 package cs555.system.metadata;
 
 import cs555.system.transport.TCPConnection;
-import cs555.system.util.Constants;
 
 /**
  * 
@@ -86,22 +85,21 @@ public class LeafSet {
    *         {@code other}, <b>or</b> {@code null} if {@code other}
    *         falls outside the leaf set boundaries.
    */
-  public Leaf getClosest(PeerInformation other) {
+  public Leaf getClosestLeaf(PeerInformation other) {
     int o = Integer.parseInt( other.getIdentifier(), 16 );
     int s = Integer.parseInt( self.getIdentifier(), 16 );
     int cw = Integer.parseInt( this.cw.getPeer().getIdentifier(), 16 );
     int ccw = Integer.parseInt( this.ccw.getPeer().getIdentifier(), 16 );
 
-    int mod = ( int ) Math.pow( 2, Constants.IDENTIFIER_BIT_LENGTH );
     if ( isBetween( o, cw, s ) )
     {
-      int o_cw = ( o > cw ) ? Math.floorMod( ( cw - o ), mod ) : cw - o;
-      int o_s = ( o < s ) ? Math.floorMod( ( o - s ), mod ) : o - s;
+      int o_cw = ( cw - o ) & 0xFFFF;
+      int o_s = ( o - s ) & 0xFFFF;
       return o_cw < o_s ? this.cw : new Leaf( self, null );
     } else if ( isBetween( o, s, ccw ) )
     {
-      int o_ccw = ( o < ccw ) ? Math.floorMod( ( o - ccw ), mod ) : o - ccw;
-      int o_s = ( o > s ) ? Math.floorMod( ( s - o ), mod ) : s - o;
+      int o_ccw = ( o - ccw ) & 0xFFFF;
+      int o_s = ( s - o ) & 0xFFFF;
       return o_ccw < o_s ? this.ccw : new Leaf( self, null );
     }
     return null;

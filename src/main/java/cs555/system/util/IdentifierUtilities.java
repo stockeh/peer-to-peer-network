@@ -20,7 +20,7 @@ public class IdentifierUtilities {
     StringBuffer strBuf = new StringBuffer();
     for ( int i = 0; i < buf.length; i++ )
     {
-      int byteValue = ( int ) buf[ i ] & 0xff;
+      int byteValue = ( int ) buf[ i ] & 0xFF;
       if ( byteValue <= 15 )
       {
         strBuf.append( "0" );

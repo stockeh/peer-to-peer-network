@@ -21,6 +21,8 @@ public class DiscoverPeerRequest implements Event {
 
   private int type;
 
+  private int row;
+
   private PeerInformation destination;
 
   private List<String> networkTraceIdentifiers;
@@ -31,6 +33,7 @@ public class DiscoverPeerRequest implements Event {
    */
   public DiscoverPeerRequest(PeerInformation destination) {
     this.type = Protocol.DISCOVER_PEER_REQUEST;
+    this.row = 0;
     this.destination = destination;
     this.networkTraceIdentifiers = new ArrayList<>();
   }
@@ -49,6 +52,8 @@ public class DiscoverPeerRequest implements Event {
         new DataInputStream( new BufferedInputStream( inputStream ) );
 
     this.type = din.readInt();
+
+    this.row = din.readInt();
 
     this.destination = MessageUtilities.readPeerInformation( din );
 
@@ -75,6 +80,10 @@ public class DiscoverPeerRequest implements Event {
     return type;
   }
 
+  public int getRow() {
+    return row;
+  }
+
   public PeerInformation getDestination() {
     return destination;
   }
@@ -85,6 +94,10 @@ public class DiscoverPeerRequest implements Event {
 
   public void addNetworkTraceRoute(String s) {
     networkTraceIdentifiers.add( s );
+  }
+
+  public void incrementRow() {
+    ++this.row;
   }
 
   /**
@@ -98,6 +111,8 @@ public class DiscoverPeerRequest implements Event {
         new DataOutputStream( new BufferedOutputStream( outputStream ) );
 
     dout.writeInt( type );
+
+    dout.writeInt( row );
 
     MessageUtilities.writePeerInformation( dout, destination );
 

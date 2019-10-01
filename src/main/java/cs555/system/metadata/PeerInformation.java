@@ -50,6 +50,10 @@ public class PeerInformation {
     return this.port;
   }
 
+  public String getConnection() {
+    return host + ":" + port;
+  }
+
   /**
    * Set the identifier associated with a peer
    * 

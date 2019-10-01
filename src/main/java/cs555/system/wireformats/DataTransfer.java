@@ -19,13 +19,16 @@ public class DataTransfer implements Event {
 
   private byte[] data;
 
+  private String fileSystemPath;
+
   /**
    * Default constructor -
    * 
    */
-  public DataTransfer(int type, byte[] data) {
+  public DataTransfer(int type, byte[] data, String fileSystemPath) {
     this.type = type;
     this.data = data;
+    this.fileSystemPath = fileSystemPath;
   }
 
   /**
@@ -47,6 +50,12 @@ public class DataTransfer implements Event {
     this.data = new byte[ len ];
     din.readFully( this.data );
 
+    len = din.readInt();
+    byte[] pathname = new byte[ len ];
+    din.readFully( pathname );
+
+    fileSystemPath = new String( pathname );
+
     inputStream.close();
     din.close();
   }
@@ -67,6 +76,10 @@ public class DataTransfer implements Event {
     return data;
   }
 
+  public String getFileSystemPath() {
+    return fileSystemPath;
+  }
+
   /**
    * {@inheritDoc}
    */
@@ -81,6 +94,10 @@ public class DataTransfer implements Event {
 
     dout.writeInt( data.length );
     dout.write( data );
+
+    byte[] filepath = fileSystemPath.getBytes();
+    dout.writeInt( filepath.length );
+    dout.write( filepath );
 
     dout.flush();
     marshalledBytes = outputStream.toByteArray();

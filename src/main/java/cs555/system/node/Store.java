@@ -22,6 +22,7 @@ import cs555.system.wireformats.DiscoverNodeResponse;
 import cs555.system.wireformats.DiscoverPeerRequest;
 import cs555.system.wireformats.Event;
 import cs555.system.wireformats.GenericMessage;
+import cs555.system.wireformats.GenericPeerMessage;
 import cs555.system.wireformats.Protocol;
 
 /**
@@ -109,6 +110,10 @@ public class Store implements Node {
           lookup( input );
           break;
 
+        case "fake" :
+          FAKEUPLOAD( input );
+          break;
+
         case EXIT :
           running = false;
           break;
@@ -127,13 +132,41 @@ public class Store implements Node {
     System.exit( 0 );
   }
 
+  private void FAKEUPLOAD(String[] input) {
+    if ( metadata.writable() )
+    {
+      String identifier = input[ 1 ];
+      LOG.info( "Data Has Identifier: " + identifier
+          + ", based off the name /local_machine_path" );
+      metadata.item().setIdentifier( identifier );
+      metadata.setLocalPath( Paths.get( "data/greta.jpeg" ) );
+      metadata.setFileSystemPath( "greta.jpeg" );
+      try
+      {
+        TCPConnection connection = ConnectionUtilities.establishConnection(
+            this, Properties.DISCOVERY_HOST, Properties.DISCOVERY_PORT );
+        connection.submitTo( executorService );
+        connection.getTCPSender()
+            .sendData( ( new GenericMessage( Protocol.DISCOVER_NODE_REQUEST ) )
+                .getBytes() );
+      } catch ( IOException e )
+      {
+        LOG.error( "Unable to send message to Discovery. " + e.getMessage() );
+        e.printStackTrace();
+      }
+    } else
+    {
+      LOG.info( "The Store is currently writing a file. Try again shortly." );
+    }
+  }
+
   /**
    * 
    * <p>
    * <code>
-   * get /hdfs_path /local_machine_path
+   * get /fs_path /local_machine_path
    * </br>
-   * get /img.png data/
+   * get img.png data/img.png
    * </code>
    * </p>
    * 
@@ -142,18 +175,26 @@ public class Store implements Node {
   private void lookup(String[] input) {
     if ( input.length != 3 )
     {
-      LOG.error( "USAGE: get /hdfs_path /local_machine_path" );
+      LOG.error( "USAGE: get fs_path /local_machine_path" );
     }
   }
 
   /**
    * 
+   * <p>
+   * <code>
+   * upload /local_machine_path /fs_path
+   * </br>
+   * upload data/img.png img.png 
+   * </code>
+   * </p>
    * 
+   * @param input
    */
   private void upload(String[] input) {
     if ( input.length != 3 )
     {
-      LOG.error( "USAGE: upload /local_machine_path /hdfs_path" );
+      LOG.error( "USAGE: upload /local_machine_path fs_path" );
       return;
     }
     if ( metadata.writable() )
@@ -163,7 +204,8 @@ public class Store implements Node {
       LOG.info( "Data Has Identifier: " + identifier
           + ", based off the name /local_machine_path" );
       metadata.item().setIdentifier( identifier );
-      metadata.setPath( Paths.get( input[ 1 ] ) );
+      metadata.setLocalPath( Paths.get( input[ 1 ] ) );
+      metadata.setFileSystemPath( input[ 2 ] );
       try
       {
         TCPConnection connection = ConnectionUtilities.establishConnection(
@@ -199,7 +241,36 @@ public class Store implements Node {
       case Protocol.DISCOVER_PEER_REQUEST :
         deliver( event, connection );
         break;
+
+      case Protocol.STORE_DATA_RESPONSE :
+        deliveryResponse( event, connection );
+        break;
     }
+  }
+
+  /**
+   * Process the response message from the peer regarding the status of
+   * the writing operation.
+   * 
+   * @param event
+   * @param connection
+   */
+  private void deliveryResponse(Event event, TCPConnection connection) {
+    connection.close();
+    GenericPeerMessage response = ( GenericPeerMessage ) event;
+
+    StringBuilder sb =
+        ( new StringBuilder() ).append( "The write request to peer " )
+            .append( response.getPeer().toString() ).append( " for " )
+            .append( metadata.getFileSystemPath() ).append( " | " )
+            .append( metadata.item().getIdentifier() ).append( " was " );
+    if ( !response.getFlag() )
+    {
+      sb.append( "NOT " );
+    }
+    sb.append( "successful!" );
+    LOG.info( sb.toString() );
+    metadata.reset();
   }
 
   /**
@@ -234,10 +305,9 @@ public class Store implements Node {
    * @param connection
    */
   private void deliver(Event event, TCPConnection connection) {
-
     DiscoverPeerRequest request = ( DiscoverPeerRequest ) event;
 
-    StringBuilder sb = new StringBuilder( "Network Join Trace:" );
+    StringBuilder sb = new StringBuilder( "Network Route Trace:" );
     for ( String s : request.getNetworkTraceIdentifiers() )
     {
       sb.append( " -> " ).append( s );
@@ -245,10 +315,10 @@ public class Store implements Node {
     LOG.info( sb.toString() );
     try
     {
-      byte[] content = Files.readAllBytes( metadata.getPath() );
-      connection.getTCPSender().sendData(
-          ( new DataTransfer( Protocol.STORE_DATA_REQUEST, content ) )
-              .getBytes() );
+      byte[] content = Files.readAllBytes( metadata.getLocalPath() );
+      connection.getTCPSender()
+          .sendData( ( new DataTransfer( Protocol.STORE_DATA_REQUEST, content,
+              metadata.getFileSystemPath() ) ).getBytes() );
     } catch ( IOException e )
     {
       LOG.error( "Unable to upload file. " + e.getMessage() );
