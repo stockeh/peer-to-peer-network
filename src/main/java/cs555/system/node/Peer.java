@@ -1,8 +1,12 @@
 package cs555.system.node;
 
+import java.io.File;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.ServerSocket;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Date;
 import java.util.List;
 import java.util.Scanner;
@@ -203,12 +207,41 @@ public class Peer implements Node {
   }
 
   /**
+   * Process an incoming file by saving it to disk, and responding to
+   * the Store.
    * 
    * @param event
    * @param connection
    */
   private void write(Event event, TCPConnection connection) {
-    byte[] data = ( ( DataTransfer ) event ).getData();
+    DataTransfer request = ( DataTransfer ) event;
+    String fileSystemPath =
+        request.getFileSystemPath() + "-" + metadata.self().getConnection();
+    Path path =
+        Paths.get( File.separator, "tmp", "stock", "pastry", fileSystemPath );
+    boolean success = true;
+    try
+    {
+      Files.createDirectories( path.getParent() );
+      Files.write( path, request.getData() );
+      LOG.info( "Finished writing " + fileSystemPath + " to disk." );
+    } catch ( IOException e )
+    {
+      LOG.error(
+          "Unable to save " + fileSystemPath + " to disk. " + e.getMessage() );
+      e.printStackTrace();
+      success = false;
+    }
+    try
+    {
+      connection.getTCPSender()
+          .sendData( ( new GenericPeerMessage( Protocol.STORE_DATA_RESPONSE,
+              metadata.self(), success ) ).getBytes() );
+    } catch ( IOException e )
+    {
+      LOG.error( "Unable to send message to store. " + e.getMessage() );
+      e.printStackTrace();
+    }
   }
 
   /**

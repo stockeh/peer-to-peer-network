@@ -11,7 +11,9 @@ public class StoreMetadata {
 
   private final PeerInformation item;
 
-  private Path path;
+  private Path localPath;
+
+  private String fileSystemPath;
 
   /**
    * 
@@ -34,16 +36,36 @@ public class StoreMetadata {
    * 
    * @return
    */
-  public Path getPath() {
-    return path;
+  public Path getLocalPath() {
+    return localPath;
+  }
+
+  /**
+   * 
+   * @param path
+   */
+  public void setLocalPath(Path path) {
+    this.localPath = path;
+  }
+
+  /**
+   * 
+   * @return
+   */
+  public String getFileSystemPath() {
+    return fileSystemPath;
   }
 
   /**
    * 
    * @param content
    */
-  public void setPath(Path path) {
-    this.path = path;
+  public void setFileSystemPath(String path) {
+    if ( path.charAt( 0 ) == '/' || path.charAt( 0 ) == '\\' )
+    {
+      path = path.substring( 1 );
+    }
+    this.fileSystemPath = path;
   }
 
   /**
@@ -52,6 +74,17 @@ public class StoreMetadata {
    */
   public boolean writable() {
     return item.getIdentifier() == null;
+  }
+
+  /**
+   * Maintain the host and port information, but reset all other
+   * metadata fields.
+   * 
+   */
+  public void reset() {
+    localPath = null;
+    fileSystemPath = null;
+    item.setIdentifier( null );
   }
 
 }
