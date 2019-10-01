@@ -1,7 +1,5 @@
 package cs555.system.metadata;
 
-import cs555.system.transport.TCPConnection;
-
 /**
  * Contains information relating to the leaf set for some peer.
  * 
@@ -17,9 +15,9 @@ public class LeafSet {
 
   private final PeerInformation self;
 
-  private Leaf cw;
+  private PeerInformation cw;
 
-  private Leaf ccw;
+  private PeerInformation ccw;
 
   /**
    * Default constructor -
@@ -48,10 +46,10 @@ public class LeafSet {
   public void setLeaf(PeerInformation peer, boolean cw) {
     if ( cw )
     {
-      this.cw = new Leaf( peer );
+      this.cw = peer;
     } else
     {
-      this.ccw = new Leaf( peer );
+      this.ccw = peer;
     }
   }
 
@@ -81,22 +79,22 @@ public class LeafSet {
    *         {@code other}, <b>or</b> {@code null} if {@code other}
    *         falls outside the leaf set boundaries.
    */
-  public Leaf getClosestLeaf(PeerInformation other) {
+  public PeerInformation getClosestLeaf(PeerInformation other) {
     int o = Integer.parseInt( other.getIdentifier(), 16 );
     int s = Integer.parseInt( self.getIdentifier(), 16 );
-    int cw = Integer.parseInt( this.cw.getPeer().getIdentifier(), 16 );
-    int ccw = Integer.parseInt( this.ccw.getPeer().getIdentifier(), 16 );
+    int cw = Integer.parseInt( this.cw.getIdentifier(), 16 );
+    int ccw = Integer.parseInt( this.ccw.getIdentifier(), 16 );
 
     if ( isBetween( o, cw, s ) )
     {
       int o_cw = ( cw - o ) & 0xFFFF;
       int o_s = ( o - s ) & 0xFFFF;
-      return o_cw < o_s ? this.cw : new Leaf( self, null );
+      return o_cw < o_s ? this.cw : self;
     } else if ( isBetween( o, s, ccw ) )
     {
       int o_ccw = ( o - ccw ) & 0xFFFF;
       int o_s = ( s - o ) & 0xFFFF;
-      return o_ccw < o_s ? this.ccw : new Leaf( self, null );
+      return o_ccw < o_s ? this.ccw : self;
     }
     return null;
   }
@@ -107,42 +105,9 @@ public class LeafSet {
    */
   public String toString() {
     return ( new StringBuilder( "Updated Leaf Set: { " ) )
-        .append( cw.getPeer().getIdentifier() ).append( " <- " )
+        .append( cw.getIdentifier() ).append( " <- " )
         .append( self.getIdentifier() ).append( " -> " )
-        .append( ccw.getPeer().getIdentifier() ).append( " }" ).toString();
-  }
-
-  /**
-   * Subsequent class to maintain the {@code PeerInformation} and
-   * {@code TCPConnection} details for a leaf.
-   * 
-   * @author stock
-   *
-   */
-  public static class Leaf {
-
-    private final PeerInformation p;
-
-    private final TCPConnection c;
-
-    private Leaf(PeerInformation p) {
-      this.p = p;
-      this.c = null;
-    }
-
-    private Leaf(PeerInformation p, TCPConnection c) {
-      this.p = p;
-      this.c = c;
-    }
-
-    public PeerInformation getPeer() {
-      return p;
-    }
-
-    public TCPConnection getConnection() {
-      return c;
-    }
-
+        .append( ccw.getIdentifier() ).append( " }" ).toString();
   }
 
 }

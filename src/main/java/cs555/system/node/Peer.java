@@ -13,7 +13,6 @@ import java.util.Scanner;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.stream.Stream;
-import cs555.system.metadata.LeafSet.Leaf;
 import cs555.system.metadata.PeerInformation;
 import cs555.system.metadata.PeerMetadata;
 import cs555.system.transport.TCPConnection;
@@ -273,12 +272,13 @@ public class Peer implements Node {
     DiscoverPeerRequest request = ( DiscoverPeerRequest ) event;
     request.addNetworkTraceRoute( metadata.self().getIdentifier() );
 
-    Leaf closest = metadata.leaf().getClosestLeaf( request.getDestination() );
+    PeerInformation closest =
+        metadata.leaf().getClosestLeaf( request.getDestination() );
     try
     {
       if ( closest != null )
       {
-        if ( closest.getPeer().equals( metadata.self() ) )
+        if ( closest.equals( metadata.self() ) )
         {
           connection = ConnectionUtilities.establishConnection( this,
               request.getDestination().getHost(),
@@ -287,13 +287,13 @@ public class Peer implements Node {
         } else
         {
           connection = ConnectionUtilities.establishConnection( this,
-              closest.getPeer().getHost(), closest.getPeer().getPort() );
+              closest.getHost(), closest.getPort() );
         }
       } else
       {
-        PeerInformation peer = lookupDHT( request );
+        closest = lookupDHT( request );
         connection = ConnectionUtilities.establishConnection( this,
-            peer.getHost(), peer.getPort() );
+            closest.getHost(), closest.getPort() );
       }
       connection.getTCPSender().sendData( request.getBytes() );
     } catch ( IOException e )
