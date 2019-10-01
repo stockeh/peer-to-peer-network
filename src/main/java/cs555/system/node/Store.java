@@ -109,6 +109,10 @@ public class Store implements Node {
           lookup( input );
           break;
 
+        case "fake" :
+          FAKEUPLOAD( input );
+          break;
+
         case EXIT :
           running = false;
           break;
@@ -125,6 +129,33 @@ public class Store implements Node {
       }
     }
     System.exit( 0 );
+  }
+
+  private void FAKEUPLOAD(String[] input) {
+    if ( metadata.writable() )
+    {
+      String identifier = input[ 1 ];
+      LOG.info( "Data Has Identifier: " + identifier
+          + ", based off the name /local_machine_path" );
+      metadata.item().setIdentifier( identifier );
+      metadata.setPath( Paths.get( "data/greta.jpeg" ) );
+      try
+      {
+        TCPConnection connection = ConnectionUtilities.establishConnection(
+            this, Properties.DISCOVERY_HOST, Properties.DISCOVERY_PORT );
+        connection.submitTo( executorService );
+        connection.getTCPSender()
+            .sendData( ( new GenericMessage( Protocol.DISCOVER_NODE_REQUEST ) )
+                .getBytes() );
+      } catch ( IOException e )
+      {
+        LOG.error( "Unable to send message to Discovery. " + e.getMessage() );
+        e.printStackTrace();
+      }
+    } else
+    {
+      LOG.info( "The Store is currently writing a file. Try again shortly." );
+    }
   }
 
   /**
@@ -234,10 +265,9 @@ public class Store implements Node {
    * @param connection
    */
   private void deliver(Event event, TCPConnection connection) {
-
     DiscoverPeerRequest request = ( DiscoverPeerRequest ) event;
 
-    StringBuilder sb = new StringBuilder( "Network Join Trace:" );
+    StringBuilder sb = new StringBuilder( "Network Route Trace:" );
     for ( String s : request.getNetworkTraceIdentifiers() )
     {
       sb.append( " -> " ).append( s );
@@ -254,6 +284,8 @@ public class Store implements Node {
       LOG.error( "Unable to upload file. " + e.getMessage() );
       e.printStackTrace();
     }
+    LOG.debug( "Finsihed sending file to peer" );
+    metadata.item().setIdentifier( null );
   }
 
 

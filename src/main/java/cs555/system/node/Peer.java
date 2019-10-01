@@ -19,6 +19,7 @@ import cs555.system.util.Constants;
 import cs555.system.util.IdentifierUtilities;
 import cs555.system.util.Logger;
 import cs555.system.util.Properties;
+import cs555.system.wireformats.DataTransfer;
 import cs555.system.wireformats.DiscoverNodeResponse;
 import cs555.system.wireformats.DiscoverPeerRequest;
 import cs555.system.wireformats.Event;
@@ -194,7 +195,20 @@ public class Peer implements Node {
       case Protocol.DISCOVER_PEER_REQUEST :
         discoverPeerHandler( event, connection );
         break;
+
+      case Protocol.STORE_DATA_REQUEST :
+        write( event, connection );
+        break;
     }
+  }
+
+  /**
+   * 
+   * @param event
+   * @param connection
+   */
+  private void write(Event event, TCPConnection connection) {
+    byte[] data = ( ( DataTransfer ) event ).getData();
   }
 
   /**
@@ -210,7 +224,7 @@ public class Peer implements Node {
     }
     request.addNetworkTraceRoute( metadata.self().getIdentifier() );
 
-    Leaf closest = metadata.leaf().getClosest( request.getDestination() );
+    Leaf closest = metadata.leaf().getClosestLeaf( request.getDestination() );
     try
     {
       if ( closest != null )
@@ -220,13 +234,15 @@ public class Peer implements Node {
           connection = ConnectionUtilities.establishConnection( this,
               request.getDestination().getHost(),
               request.getDestination().getPort() );
+          connection.submitTo( executorService );
         } else
         {
           connection = closest.getConnection();
         }
       } else
       {
-        PeerInformation peer = lookup( request.getDestination() );
+        connection.close();
+        PeerInformation peer = lookup( request );
         connection = ConnectionUtilities.establishConnection( this,
             peer.getHost(), peer.getPort() );
       }
@@ -238,9 +254,72 @@ public class Peer implements Node {
     }
   }
 
-  private PeerInformation lookup(PeerInformation destination) {
-    // TODO: Consult DHT for closest peer to destination
-    return null;
+  /**
+   * Consult DHT for closest peer to destination
+   * 
+   * 
+   * @param request
+   * @return
+   */
+  private PeerInformation lookup(DiscoverPeerRequest request) {
+    int row = request.getRow();
+
+    int selfCol =
+        Character.digit( metadata.self().getIdentifier().charAt( row ), 16 );
+    int destCol = Character
+        .digit( request.getDestination().getIdentifier().charAt( row ), 16 );
+
+    if ( selfCol == destCol )
+    {
+      request.incrementRow();
+      return lookup( request );
+    } else
+    {
+      PeerInformation peer = metadata.table().getTableIndex( row, destCol );
+      if ( peer != null )
+      {
+        return peer;
+      } else
+      {
+        int dest =
+            Integer.parseInt( request.getDestination().getIdentifier(), 16 );
+        int diff = Integer.MAX_VALUE, other, temp_diff;
+        PeerInformation closest = null, temp;
+        for ( ; row < 4; ++row )
+        {
+          for ( int i = 1; i < 8; ++i )
+          {
+            // clockwise
+            int col = ( destCol + i ) & 0xF;
+            temp = metadata.table().getTableIndex( row, col );
+            if ( temp != null )
+            {
+              other = Integer.parseInt( temp.getIdentifier(), 16 );
+              temp_diff = ( other - dest ) & 0xFFFF;
+              if ( temp_diff < diff )
+              {
+                diff = temp_diff;
+                closest = temp;
+              }
+            }
+            // counter-clockwise
+            col = ( destCol - i ) & 0xF;
+            temp = metadata.table().getTableIndex( row, col );
+            if ( temp != null )
+            {
+              other = Integer.parseInt( temp.getIdentifier(), 16 );
+              temp_diff = ( dest - other ) & 0xFFFF;
+              if ( temp_diff < diff )
+              {
+                diff = temp_diff;
+                closest = temp;
+              }
+            }
+          }
+        }
+        return closest;
+      }
+    }
   }
 
   /**
@@ -406,7 +485,7 @@ public class Peer implements Node {
           col = selfCol + i;
           if ( col < 16 || row == 0 )
           {
-            col = Math.floorMod( col, 16 );
+            col = col & 0xF;
             cw = metadata.table().getTableIndex( row, col );
           }
         }
@@ -415,7 +494,7 @@ public class Peer implements Node {
           col = selfCol - i;
           if ( col >= 0 || row == 0 )
           {
-            col = Math.floorMod( col, 16 );
+            col = col & 0xF;
             ccw = metadata.table().getTableIndex( row, col );
           }
         }
