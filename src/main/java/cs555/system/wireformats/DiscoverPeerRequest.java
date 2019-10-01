@@ -97,7 +97,7 @@ public class DiscoverPeerRequest implements Event {
   }
 
   public void incrementRow() {
-    ++this.row;
+    ++row;
   }
 
   /**

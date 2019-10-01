@@ -13,7 +13,6 @@ import java.util.Scanner;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.stream.Stream;
-import cs555.system.metadata.LeafSet.Leaf;
 import cs555.system.metadata.PeerInformation;
 import cs555.system.metadata.PeerMetadata;
 import cs555.system.transport.TCPConnection;
@@ -269,19 +268,17 @@ public class Peer implements Node {
    * @param connection
    */
   private void lookup(Event event, TCPConnection connection) {
+    connection.close();
     DiscoverPeerRequest request = ( DiscoverPeerRequest ) event;
-    if ( request.getNetworkTraceIdentifiers().size() == 0 )
-    {
-      connection.close();
-    }
     request.addNetworkTraceRoute( metadata.self().getIdentifier() );
 
-    Leaf closest = metadata.leaf().getClosestLeaf( request.getDestination() );
+    PeerInformation closest =
+        metadata.leaf().getClosestLeaf( request.getDestination() );
     try
     {
       if ( closest != null )
       {
-        if ( closest.getPeer().equals( metadata.self() ) )
+        if ( closest.equals( metadata.self() ) )
         {
           connection = ConnectionUtilities.establishConnection( this,
               request.getDestination().getHost(),
@@ -289,14 +286,14 @@ public class Peer implements Node {
           connection.submitTo( executorService );
         } else
         {
-          connection = closest.getConnection();
+          connection = ConnectionUtilities.establishConnection( this,
+              closest.getHost(), closest.getPort() );
         }
       } else
       {
-        connection.close();
-        PeerInformation peer = lookupDHT( request );
+        closest = lookupDHT( request );
         connection = ConnectionUtilities.establishConnection( this,
-            peer.getHost(), peer.getPort() );
+            closest.getHost(), closest.getPort() );
       }
       connection.getTCPSender().sendData( request.getBytes() );
     } catch ( IOException e )
@@ -381,8 +378,9 @@ public class Peer implements Node {
    */
   private synchronized void updateLeafSet(Event event,
       TCPConnection connection) {
+    connection.close();
     GenericPeerMessage request = ( GenericPeerMessage ) event;
-    metadata.leaf().setLeaf( request.getPeer(), connection, request.getFlag() );
+    metadata.leaf().setLeaf( request.getPeer(), request.getFlag() );
     if ( metadata.leaf().isPopulated() )
     {
       LOG.info( metadata.leaf().toString() );
@@ -556,19 +554,20 @@ public class Peer implements Node {
       // request flag false for cw, true for ccw
       GenericPeerMessage request = new GenericPeerMessage(
           Protocol.FORWARD_LEAF_IDENTIFIER, metadata.self(), false );
+
       TCPConnection connection = ConnectionUtilities.establishConnection( this,
           cw.getHost(), cw.getPort() );
-      connection.submitTo( executorService );
-      metadata.leaf().setLeaf( cw, connection, true );
+
+      metadata.leaf().setLeaf( cw, Constants.CLOCKWISE );
+      request.setFlag( Constants.COUNTER_CLOCKWISE );
       connection.getTCPSender().sendData( request.getBytes() );
 
       connection = ConnectionUtilities.establishConnection( this, ccw.getHost(),
           ccw.getPort() );
-      connection.submitTo( executorService );
-      metadata.leaf().setLeaf( ccw, connection, false );
-      request.setFlag( true );
-      connection.getTCPSender().sendData( request.getBytes() );
 
+      metadata.leaf().setLeaf( ccw, Constants.COUNTER_CLOCKWISE );
+      request.setFlag( Constants.CLOCKWISE );
+      connection.getTCPSender().sendData( request.getBytes() );
     } catch ( IOException e )
     {
       LOG.error(

@@ -278,8 +278,8 @@ public class Store implements Node {
     GenericPeerMessage response = ( GenericPeerMessage ) event;
 
     StringBuilder sb =
-        ( new StringBuilder() ).append( "The write request to peer " )
-            .append( response.getPeer().toString() ).append( " for " )
+        ( new StringBuilder() ).append( "The write request to peer ( " )
+            .append( response.getPeer().toString() ).append( ") for " )
             .append( metadata.getFileSystemPath() ).append( " | " )
             .append( metadata.item().getIdentifier() ).append( " was " );
     if ( response.getFlag() == Constants.FAILURE )
