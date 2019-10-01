@@ -1,6 +1,7 @@
 package cs555.system.metadata;
 
 /**
+ * Contains information related to a specific peer in the network.
  * 
  * @author stock
  *

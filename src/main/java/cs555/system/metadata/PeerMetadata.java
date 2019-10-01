@@ -6,6 +6,9 @@ import java.util.concurrent.locks.ReentrantLock;
 import cs555.system.util.Constants;
 
 /**
+ * Class to maintain the information needed for a given peer. This
+ * includes the Distributed Hash Table (DHT), leaf set, and its own
+ * information.
  * 
  * @author stock
  *
@@ -77,10 +80,10 @@ public class PeerMetadata {
   public LeafSet leaf() {
     return leaf;
   }
-  
+
   /**
    * 
-   * @return
+   * @return the {@code ReentrantLock} for the {@code Condition}
    */
   public Lock getLock() {
     return lock;
@@ -88,7 +91,8 @@ public class PeerMetadata {
 
   /**
    * 
-   * @return
+   * @return true if the peer has its DHT and leaf set initialized,
+   *         false otherwise
    */
   public boolean isInitialized() {
     return initialized;
@@ -111,10 +115,11 @@ public class PeerMetadata {
   }
 
   /**
-   * Initializes the first location in the routing table ( itself ).
+   * Initializes the location in the routing table for itself.
    * 
    * <p>
-   * This is used for when the initial node joins the table.
+   * This is used for when the initial node joins the table, and after
+   * receiving the trace DHT rows.
    * </p>
    * 
    */

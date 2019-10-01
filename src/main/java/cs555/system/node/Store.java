@@ -1,9 +1,11 @@
 package cs555.system.node;
 
+import java.io.File;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Date;
 import java.util.Scanner;
@@ -14,6 +16,7 @@ import cs555.system.metadata.StoreMetadata;
 import cs555.system.transport.TCPConnection;
 import cs555.system.transport.TCPServerThread;
 import cs555.system.util.ConnectionUtilities;
+import cs555.system.util.Constants;
 import cs555.system.util.IdentifierUtilities;
 import cs555.system.util.Logger;
 import cs555.system.util.Properties;
@@ -26,7 +29,9 @@ import cs555.system.wireformats.GenericPeerMessage;
 import cs555.system.wireformats.Protocol;
 
 /**
- *
+ * Client Store application responsible for delivering or reading data
+ * into the peer-to-peer network.
+ * 
  * @author stock
  *
  */
@@ -132,12 +137,13 @@ public class Store implements Node {
     System.exit( 0 );
   }
 
+  // TODO: DELETE ME. I AM A FAKE HELPER METHOD.
   private void FAKEUPLOAD(String[] input) {
     if ( metadata.writable() )
     {
       String identifier = input[ 1 ];
-      LOG.info( "Data Has Identifier: " + identifier
-          + ", based off the name /local_machine_path" );
+      LOG.info(
+          "Data Has Identifier: " + identifier + ", based off being fake." );
       metadata.item().setIdentifier( identifier );
       metadata.setLocalPath( Paths.get( "data/greta.jpeg" ) );
       metadata.setFileSystemPath( "greta.jpeg" );
@@ -161,13 +167,13 @@ public class Store implements Node {
   }
 
   /**
+   * Read a file that was previously uploaded to the peer-to-peer
+   * network to a given path, e.g., read the file in the file system
+   * '/greta.jpeg' to the directory 'data'.
    * 
    * <p>
-   * <code>
-   * get /fs_path /local_machine_path
-   * </br>
-   * get img.png data/img.png
-   * </code>
+   * USAGE:
+   * {@code get /fs_path /local_machine_path | get /greta.jpeg data/ }
    * </p>
    * 
    * @param input
@@ -175,18 +181,25 @@ public class Store implements Node {
   private void lookup(String[] input) {
     if ( input.length != 3 )
     {
-      LOG.error( "USAGE: get fs_path /local_machine_path" );
+      LOG.error( "USAGE: get /fs_path /local_machine_path || "
+          + "get /greta.jpeg data/" );
     }
   }
 
   /**
+   * Upload a file into the peer-to-peer network by specifying the local
+   * file that will be delivered, and then the path of where the file
+   * should be stored at the peer.
    * 
    * <p>
-   * <code>
-   * upload /local_machine_path /fs_path
-   * </br>
-   * upload data/img.png img.png 
-   * </code>
+   * The identifier is based off the /fs_path + the name for the file,
+   * e.g., if uploading the file 'data/greta.jpeg' to the path '/' the
+   * identifier and file name on the peer will be '/greta.jpeg'.
+   * </p>
+   * 
+   * <p>
+   * USAGE:
+   * {@code upload /local_machine_path /fs_path | upload data/greta.jpeg / }
    * </p>
    * 
    * @param input
@@ -194,18 +207,23 @@ public class Store implements Node {
   private void upload(String[] input) {
     if ( input.length != 3 )
     {
-      LOG.error( "USAGE: upload /local_machine_path fs_path" );
+      LOG.error( "USAGE: upload /local_machine_path /fs_path || "
+          + "upload data/greta.jpeg /" );
       return;
     }
     if ( metadata.writable() )
     {
+      Path localPath = Paths.get( input[ 1 ] );
+      String fileSystemPath = input[ 2 ].endsWith( File.separator ) ? input[ 2 ]
+          : input[ 2 ] + File.separator;
+      fileSystemPath += localPath.getFileName().toString();
       String identifier =
-          IdentifierUtilities.CRC16CCITT( input[ 1 ].getBytes() );
+          IdentifierUtilities.CRC16CCITT( fileSystemPath.getBytes() );
       LOG.info( "Data Has Identifier: " + identifier
-          + ", based off the name /local_machine_path" );
+          + ", based off the name /fs_path and file name." );
       metadata.item().setIdentifier( identifier );
-      metadata.setLocalPath( Paths.get( input[ 1 ] ) );
-      metadata.setFileSystemPath( input[ 2 ] );
+      metadata.setLocalPath( localPath );
+      metadata.setFileSystemPath( fileSystemPath );
       try
       {
         TCPConnection connection = ConnectionUtilities.establishConnection(
@@ -264,7 +282,7 @@ public class Store implements Node {
             .append( response.getPeer().toString() ).append( " for " )
             .append( metadata.getFileSystemPath() ).append( " | " )
             .append( metadata.item().getIdentifier() ).append( " was " );
-    if ( !response.getFlag() )
+    if ( response.getFlag() == Constants.FAILURE )
     {
       sb.append( "NOT " );
     }
@@ -300,9 +318,11 @@ public class Store implements Node {
   }
 
   /**
+   * Deliver the file to the destination once a peer has responded to
+   * this Store containing details of where to deliver the data.
    * 
    * @param event
-   * @param connection
+   * @param connection to the peer that will hold the data
    */
   private void deliver(Event event, TCPConnection connection) {
     DiscoverPeerRequest request = ( DiscoverPeerRequest ) event;

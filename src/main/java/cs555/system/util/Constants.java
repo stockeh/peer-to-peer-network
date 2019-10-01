@@ -1,15 +1,16 @@
 package cs555.system.util;
 
 /**
+ * Constants that will not change in the program.
  * 
  * @author stock
  *
  */
 public interface Constants {
 
-  final byte FAILURE = ( byte ) 0;
+  final boolean SUCCESS = true;
 
-  final byte SUCCESS = ( byte ) 1;
+  final boolean FAILURE = false;
 
   final int IDENTIFIER_BIT_LENGTH = 16;
 
