@@ -22,6 +22,16 @@ import cs555.system.wireformats.Protocol;
 
 
 /**
+ * Auxiliary node to simplify the process of discovering the first
+ * peer that will be the entry point into the system.
+ * 
+ * <p>
+ * The discovery node is ONLY responsible only for:
+ * <ul>
+ * <li>Returning ONE random node from the set of registered nodes</li>
+ * <li>Detect collisions</li>
+ * </ul>
+ * </p>
  *
  * @author stock
  *
@@ -39,7 +49,7 @@ public class Discovery implements Node {
   private List<PeerInformation> registeredNodes;
 
   /**
-   * Default constructor
+   * Default constructor -
    */
   public Discovery() {
     this.registeredNodes = new ArrayList<>();

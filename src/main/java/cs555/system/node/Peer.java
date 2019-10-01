@@ -32,6 +32,11 @@ import cs555.system.wireformats.JoinNetwork;
 import cs555.system.wireformats.Protocol;
 
 /**
+ * An equally shared resource that can perform the same tasks as all
+ * other peers.
+ * 
+ * These tasks include communicating with the network and storing data
+ * from a client Store application.
  *
  * @author stock
  *
@@ -94,9 +99,11 @@ public class Peer implements Node {
   /**
    * Create an identifier for the peer, and connect with Discovery.
    * 
-   * @param args (Optional) from the command line
-   * @param connection to Discovery
-   * @throws IOException
+   * @param args (optional) from the command line
+   * @param connection to Discovery, can be null to establish a new
+   *        connection.
+   * @throws IOException if unable to connect to Discovery, and thus,
+   *         the network
    */
   private void discoverConnection(String[] args, TCPConnection connection)
       throws IOException {
@@ -197,7 +204,7 @@ public class Peer implements Node {
         break;
 
       case Protocol.DISCOVER_PEER_REQUEST :
-        discoverPeerHandler( event, connection );
+        lookup( event, connection );
         break;
 
       case Protocol.STORE_DATA_REQUEST :
@@ -208,10 +215,15 @@ public class Peer implements Node {
 
   /**
    * Process an incoming file by saving it to disk, and responding to
-   * the Store.
+   * the Store with the status of the write operation.
+   * 
+   * <p>
+   * Data is stored by the specified {@code fileSystemPath} and a unique
+   * host connection string.
+   * </p>
    * 
    * @param event
-   * @param connection
+   * @param connection from the Store that will be used for response
    */
   private void write(Event event, TCPConnection connection) {
     DataTransfer request = ( DataTransfer ) event;
@@ -219,7 +231,7 @@ public class Peer implements Node {
         request.getFileSystemPath() + "-" + metadata.self().getConnection();
     Path path =
         Paths.get( File.separator, "tmp", "stock", "pastry", fileSystemPath );
-    boolean success = true;
+    boolean success = Constants.SUCCESS;
     try
     {
       Files.createDirectories( path.getParent() );
@@ -230,7 +242,7 @@ public class Peer implements Node {
       LOG.error(
           "Unable to save " + fileSystemPath + " to disk. " + e.getMessage() );
       e.printStackTrace();
-      success = false;
+      success = Constants.FAILURE;
     }
     try
     {
@@ -245,11 +257,18 @@ public class Peer implements Node {
   }
 
   /**
+   * Lookup the peer that is numerically closest to the identifier in
+   * the request.
+   * 
+   * <p>
+   * This operation is done by checking if the request identifier falls
+   * within the leaf set, otherwise the lookup is done within the DHT.
+   * </p>
    * 
    * @param event
    * @param connection
    */
-  private void discoverPeerHandler(Event event, TCPConnection connection) {
+  private void lookup(Event event, TCPConnection connection) {
     DiscoverPeerRequest request = ( DiscoverPeerRequest ) event;
     if ( request.getNetworkTraceIdentifiers().size() == 0 )
     {
@@ -275,7 +294,7 @@ public class Peer implements Node {
       } else
       {
         connection.close();
-        PeerInformation peer = lookup( request );
+        PeerInformation peer = lookupDHT( request );
         connection = ConnectionUtilities.establishConnection( this,
             peer.getHost(), peer.getPort() );
       }
@@ -288,13 +307,12 @@ public class Peer implements Node {
   }
 
   /**
-   * Consult DHT for closest peer to destination
-   * 
+   * Consult the DHT to find the closest peer to request identifier.
    * 
    * @param request
-   * @return
+   * @return the {@code PeerIdentifier} that is deemed closest
    */
-  private PeerInformation lookup(DiscoverPeerRequest request) {
+  private PeerInformation lookupDHT(DiscoverPeerRequest request) {
     int row = request.getRow();
 
     int selfCol =
@@ -305,7 +323,7 @@ public class Peer implements Node {
     if ( selfCol == destCol )
     {
       request.incrementRow();
-      return lookup( request );
+      return lookupDHT( request );
     } else
     {
       PeerInformation peer = metadata.table().getTableIndex( row, destCol );
@@ -318,7 +336,7 @@ public class Peer implements Node {
             Integer.parseInt( request.getDestination().getIdentifier(), 16 );
         int diff = Integer.MAX_VALUE, other, temp_diff;
         PeerInformation closest = null, temp;
-        for ( ; row < 4; ++row )
+        for ( ; row < Constants.NUMBER_OF_ROWS; ++row )
         {
           for ( int i = 1; i < 8; ++i )
           {
@@ -356,7 +374,7 @@ public class Peer implements Node {
   }
 
   /**
-   * Update the leaf set from a peer who joined the network
+   * Update the leaf set from a peer who recently joined the network.
    * 
    * @param event
    * @param connection
@@ -372,16 +390,15 @@ public class Peer implements Node {
   }
 
   /**
-   * Finds the longest prefix with this and the joining peer and adds
-   * that peer to the <tt>p + 1</tt> location in this routing table.
+   * Updates this DHT with the identifier of the newly joined peer in
+   * every row, except for those that follow a shared prefix.
    * 
    * @param event
    */
   private synchronized void updateRoutingTable(Event event) {
     PeerInformation peer = ( ( GenericPeerMessage ) event ).getPeer();
 
-    int row = 0;
-    for ( ; row < Constants.NUMBER_OF_ROWS; ++row )
+    for ( int row = 0; row < Constants.NUMBER_OF_ROWS; ++row )
     {
       int selfCol =
           Character.digit( metadata.self().getIdentifier().charAt( row ), 16 );
@@ -491,22 +508,19 @@ public class Peer implements Node {
    * The leaf set is constructed using the row containing the greatest
    * common prefix with the peer joining the network.
    * 
-   * A peer will have two leaves, one on either side of it.
+   * A peer will have two leaves, one on either side of it, following
+   * the form:
    * 
    * <p>
-   * <tt>{ L, this, R }</tt>
+   * <tt>{ clockwise, this, counter-clockwise }</tt>
    * </p>
    * 
-   * @param request
-   * @param row
-   * @param destCol
    */
   private void constructLeafSet() {
     PeerInformation cw = null, ccw = null;
-    int row = Constants.NUMBER_OF_ROWS - 1;
     int selfCol, col;
 
-    rows: while ( row >= 0 )
+    rows: for ( int row = Constants.NUMBER_OF_ROWS - 1; row >= 0; --row )
     {
       selfCol =
           Character.digit( metadata.self().getIdentifier().charAt( row ), 16 );
@@ -536,7 +550,6 @@ public class Peer implements Node {
           break rows;
         }
       }
-      --row;
     }
     try
     {

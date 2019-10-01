@@ -3,6 +3,8 @@ package cs555.system.util;
 import java.nio.ByteBuffer;
 
 /**
+ * Utilities used for obtaining a hexadecimal or byte representation
+ * identifier for a peer or data content.
  * 
  * @author stock
  *

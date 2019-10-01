@@ -6,7 +6,7 @@ import java.io.IOException;
 import cs555.system.metadata.PeerInformation;
 
 /**
- * 
+ * Utilities for writing transport protocol messages.
  * 
  * @author stock
  *
@@ -14,6 +14,8 @@ import cs555.system.metadata.PeerInformation;
 public class MessageUtilities {
 
   /**
+   * Write the content of the {@code PeerInformation} object as bytes to
+   * the {@code DataOutputStream}.
    * 
    * @param dout
    * @param peer
@@ -33,9 +35,11 @@ public class MessageUtilities {
   }
 
   /**
+   * Construct the {@code PeerInformation} object from bytes delivered
+   * on the {@code DataInputStream}.
    * 
    * @param din
-   * @return
+   * @return the new {@code PeerInformation} object
    * @throws IOException
    */
   public static PeerInformation readPeerInformation(DataInputStream din)

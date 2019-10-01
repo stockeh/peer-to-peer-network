@@ -3,7 +3,8 @@ package cs555.system.metadata;
 import cs555.system.util.Constants;
 
 /**
- * 
+ * Container for the Distributed Hash Table (DHT) and all the helper
+ * methods for updating, adding and removing peers from said table.
  * 
  * @author stock
  *
@@ -22,6 +23,7 @@ public class RoutingTable {
 
   /**
    * 
+   * @return the table
    */
   public PeerInformation[][] getTable() {
     return table;
@@ -29,7 +31,7 @@ public class RoutingTable {
 
   /**
    * 
-   * @param row
+   * @param table
    */
   public void setTable(PeerInformation[][] table) {
     this.table = table;
@@ -38,7 +40,7 @@ public class RoutingTable {
   /**
    * 
    * @param index
-   * @return
+   * @return the row of the table as specified by the index
    */
   public PeerInformation[] getTableRow(int index) {
     return table[ index ];
@@ -65,7 +67,7 @@ public class RoutingTable {
   }
 
   /**
-   * Print the DHT to the console in a readable format
+   * Print the DHT to the console in a readable format.
    * 
    */
   public void display() {

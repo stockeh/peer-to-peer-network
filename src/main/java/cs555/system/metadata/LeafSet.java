@@ -3,6 +3,12 @@ package cs555.system.metadata;
 import cs555.system.transport.TCPConnection;
 
 /**
+ * Contains information relating to the leaf set for some peer.
+ * 
+ * <p>
+ * The leaf set contains {@code l} peers in the clockwise direction
+ * and {@code l} peers in the counter-clockwise direction.
+ * </p>
  * 
  * @author stock
  *
@@ -34,11 +40,12 @@ public class LeafSet {
   }
 
   /**
-   * 
+   * Set the connection with either the clockwise or counter clockwise
+   * connection. The previous connection is removed, if it exists.
    * 
    * @param peer
    * @param connection
-   * @param cw
+   * @param cw true to update the clockwise peer, false otherwise
    */
   public void setLeaf(PeerInformation peer, TCPConnection connection,
       boolean cw) {
@@ -117,6 +124,8 @@ public class LeafSet {
   }
 
   /**
+   * Subsequent class to maintain the {@code PeerInformation} and
+   * {@code TCPConnection} details for a leaf.
    * 
    * @author stock
    *

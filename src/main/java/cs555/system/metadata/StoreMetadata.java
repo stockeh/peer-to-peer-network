@@ -1,8 +1,11 @@
 package cs555.system.metadata;
 
+import java.io.File;
 import java.nio.file.Path;
 
 /**
+ * Class containing metadata for the store. This is updated every time
+ * an upload or read operation is performed.
  * 
  * @author stock
  *
@@ -16,6 +19,9 @@ public class StoreMetadata {
   private String fileSystemPath;
 
   /**
+   * Default constructor - sets the host and port for the Store, and
+   * reuses the {@code PeerInformation} object to locate a peer for some
+   * identifier.
    * 
    * @param host
    * @param port
@@ -26,7 +32,8 @@ public class StoreMetadata {
 
   /**
    * 
-   * @return
+   * @return the information for the Store host:port as well as the
+   *         content identifier.
    */
   public PeerInformation item() {
     return item;
@@ -34,7 +41,8 @@ public class StoreMetadata {
 
   /**
    * 
-   * @return
+   * @return the path for where a file is read from on the Store's local
+   *         disk
    */
   public Path getLocalPath() {
     return localPath;
@@ -50,22 +58,22 @@ public class StoreMetadata {
 
   /**
    * 
-   * @return
+   * @return the path, as a {@code String} of where a file should be
+   *         written to on the peer (once discovered)
    */
   public String getFileSystemPath() {
     return fileSystemPath;
   }
 
   /**
+   * Removes any leading file separator, e.g., '/' or '\\' before
+   * sending to the peer.
    * 
    * @param content
    */
   public void setFileSystemPath(String path) {
-    if ( path.charAt( 0 ) == '/' || path.charAt( 0 ) == '\\' )
-    {
-      path = path.substring( 1 );
-    }
-    this.fileSystemPath = path;
+    this.fileSystemPath =
+        path.startsWith( File.separator ) ? path.substring( 1 ) : path;
   }
 
   /**
@@ -77,8 +85,8 @@ public class StoreMetadata {
   }
 
   /**
-   * Maintain the host and port information, but reset all other
-   * metadata fields.
+   * Maintain the host:port information for the Store, but reset all
+   * other metadata fields.
    * 
    */
   public void reset() {
