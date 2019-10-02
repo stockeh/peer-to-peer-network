@@ -62,7 +62,7 @@ public class Discovery implements Node {
    * @param args
    */
   public static void main(String[] argas) {
-    LOG.debug( "Discovery node starting up at: " + new Date() );
+    LOG.info( "Discovery node starting up at: " + new Date() );
 
     try ( ServerSocket serverSocket =
         new ServerSocket( Properties.DISCOVERY_PORT ) )

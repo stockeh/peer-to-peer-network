@@ -71,11 +71,12 @@ public class RoutingTable {
    * 
    */
   public void display() {
-    String lineSeparator = new String( new char[ 110 ] ).replace( "\0", "-" );
+    String lineSeparator = new String( new char[ 113 ] ).replace( "\0", "-" );
     System.out.println( "\n" + lineSeparator );
     StringBuilder sb = new StringBuilder();
     for ( int i = 0; i < Constants.NUMBER_OF_ROWS; i++ )
     {
+      sb.append( "| " );
       for ( PeerInformation peer : table[ i ] )
       {
         if ( peer == null )
@@ -83,9 +84,9 @@ public class RoutingTable {
           sb.append( "null" );
         } else
         {
-          // sb.append( String.format( "%4s",
-          // peer.getIdentifier().substring( 0, i + 1 ) ) );
-          sb.append( String.format( "%4s", peer.getIdentifier() ) );
+          sb.append( String.format( "%4s",
+              peer.getIdentifier().substring( 0, i + 1 ) ) );
+          // sb.append( String.format( "%4s", peer.getIdentifier() ) );
         }
         sb.append( " | " );
       }

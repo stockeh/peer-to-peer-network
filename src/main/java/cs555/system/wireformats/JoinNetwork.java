@@ -170,7 +170,10 @@ public class JoinNetwork implements Event {
 
   @Override
   public String toString() {
-    return Integer.toString( type );
+    return ( new StringBuilder() )
+        .append( Protocol.class.getFields()[ type ].getName().toString() )
+        .append( " | " ).append( "Routing Identifier: " )
+        .append( destination.getIdentifier() ).toString();
   }
 
 }

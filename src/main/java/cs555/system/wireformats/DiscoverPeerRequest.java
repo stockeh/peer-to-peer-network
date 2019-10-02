@@ -135,6 +135,11 @@ public class DiscoverPeerRequest implements Event {
 
   @Override
   public String toString() {
-    return Integer.toString( type );
+    int size = networkTraceIdentifiers.size();
+    return ( new StringBuilder() )
+        .append( Protocol.class.getFields()[ type ].getName().toString() )
+        .append( " | Routing Identifier: " )
+        .append( destination.getIdentifier() ).append( " | Hop: " )
+        .append( size + 1 ).toString();
   }
 }

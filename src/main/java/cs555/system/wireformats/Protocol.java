@@ -2,7 +2,7 @@ package cs555.system.wireformats;
 
 /**
  * Interface defining the wireformats between discovery, peer, and
- * chunk servers.
+ * store nodes.
  *
  * @author stock
  *

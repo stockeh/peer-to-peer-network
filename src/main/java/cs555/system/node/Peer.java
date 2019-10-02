@@ -156,11 +156,7 @@ public class Peer implements Node {
       {
 
         case LIST_FILES :
-          StringBuilder sb = ( new StringBuilder( "Files Stored on " ) )
-              .append( metadata.self().toString() ).append( " include \n\n" );
-          metadata.getSortedFiles()
-              .forEach( v -> sb.append( v ).append( "\n" ) );
-          LOG.info( sb.toString() );
+          LOG.info( metadata.filesToString() );
           break;
 
         case DISPLAY_DHT :
@@ -195,7 +191,7 @@ public class Peer implements Node {
    */
   @Override
   public void onEvent(Event event, TCPConnection connection) {
-    LOG.debug( event.toString() );
+    // LOG.debug( event.toString() );
     switch ( event.getType() )
     {
       case Protocol.DISCOVER_NODE_RESPONSE :
@@ -214,6 +210,7 @@ public class Peer implements Node {
         break;
 
       case Protocol.JOIN_NETWORK_REQUEST :
+        LOG.info( event.toString() );
         join( event, connection );
         break;
 
@@ -226,6 +223,7 @@ public class Peer implements Node {
         break;
 
       case Protocol.DISCOVER_PEER_REQUEST :
+        LOG.info( event.toString() );
         lookup( event, connection );
         break;
 

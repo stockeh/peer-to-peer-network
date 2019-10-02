@@ -74,7 +74,7 @@ public class GenericMessage implements Event {
 
   @Override
   public String toString() {
-    return "\n" + type;
+    return Protocol.class.getFields()[ type ].getName().toString();
   }
 
 }

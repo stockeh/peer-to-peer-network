@@ -219,8 +219,8 @@ public class Store implements Node {
       fileSystemPath += localPath.getFileName().toString();
       String identifier =
           IdentifierUtilities.CRC16CCITT( fileSystemPath.getBytes() );
-      LOG.info( "Data Has Identifier: " + identifier
-          + ", based off the name /fs_path and file name." );
+      LOG.info( "Data Has Identifier: " + identifier + ", based off the name "
+          + fileSystemPath );
       metadata.item().setIdentifier( identifier );
       metadata.setLocalPath( localPath );
       metadata.setFileSystemPath( fileSystemPath );
@@ -248,7 +248,7 @@ public class Store implements Node {
    */
   @Override
   public void onEvent(Event event, TCPConnection connection) {
-    LOG.debug( event.toString() );
+    // LOG.debug( event.toString() );
     switch ( event.getType() )
     {
       case Protocol.DISCOVER_NODE_RESPONSE :
