@@ -44,6 +44,12 @@ public class Peer implements Node {
 
   private static final Logger LOG = Logger.getInstance();
 
+  private static final String LIST_FILES = "list-files";
+
+  private static final String DISPLAY_DHT = "display-dht";
+
+  private static final String DISPLAY_LEAF = "display-leaf";
+
   private static final String EXIT = "exit";
 
   private static final String HELP = "help";
@@ -75,7 +81,7 @@ public class Peer implements Node {
    * @param args
    */
   public static void main(String[] args) {
-    LOG.info( "peer node starting up at: " + new Date() );
+    LOG.info( "Peer node starting up at: " + new Date() );
     try ( ServerSocket serverSocket = new ServerSocket( 0 ) )
     {
       Peer node = new Peer( InetAddress.getLocalHost().getHostName(),
@@ -148,6 +154,23 @@ public class Peer implements Node {
       String[] input = scan.nextLine().toLowerCase().split( "\\s+" );
       switch ( input[ 0 ] )
       {
+
+        case LIST_FILES :
+          StringBuilder sb = ( new StringBuilder( "Files Stored on " ) )
+              .append( metadata.self().toString() ).append( " include \n\n" );
+          metadata.getSortedFiles()
+              .forEach( v -> sb.append( v ).append( "\n" ) );
+          LOG.info( sb.toString() );
+          break;
+
+        case DISPLAY_DHT :
+          LOG.info( metadata.leaf().toString() );
+          break;
+
+        case DISPLAY_LEAF :
+          metadata.table().display();
+          break;
+
         case EXIT :
           break;
 
@@ -226,6 +249,7 @@ public class Peer implements Node {
    */
   private void write(Event event, TCPConnection connection) {
     DataTransfer request = ( DataTransfer ) event;
+    metadata.addFile( request.getFileSystemPath() );
     String fileSystemPath =
         request.getFileSystemPath() + "-" + metadata.self().getConnection();
     Path path =
@@ -306,6 +330,20 @@ public class Peer implements Node {
   /**
    * Consult the DHT to find the closest peer to request identifier.
    * 
+   * <p>
+   * <ol>
+   * <li>Check if the index of {@code self} and {@code request}
+   * identifiers are the same, and keep going further down the rows
+   * until they are not the same.</li>
+   * <li>The peer at the {@code destination} column / row is not
+   * {@code null}; indicating the {@code self} DHT contains an entry
+   * matching the prefix of the {@code request} identifier.</li>
+   * <li>The {@code self} DHT does not contain any matching prefixes for
+   * a given row; forcing the a search around the rings for all
+   * remaining lower rows.</li>
+   * </ol>
+   * </p>
+   * 
    * @param request
    * @return the {@code PeerIdentifier} that is deemed closest
    */
@@ -316,7 +354,7 @@ public class Peer implements Node {
         Character.digit( metadata.self().getIdentifier().charAt( row ), 16 );
     int destCol = Character
         .digit( request.getDestination().getIdentifier().charAt( row ), 16 );
-
+    // 1.
     if ( selfCol == destCol )
     {
       request.incrementRow();
@@ -324,11 +362,12 @@ public class Peer implements Node {
     } else
     {
       PeerInformation peer = metadata.table().getTableIndex( row, destCol );
+      // 2.
       if ( peer != null )
       {
         return peer;
       } else
-      {
+      { // 3.
         int dest =
             Integer.parseInt( request.getDestination().getIdentifier(), 16 );
         int diff = Integer.MAX_VALUE, other, temp_diff;
@@ -688,6 +727,24 @@ public class Peer implements Node {
    * Display a help message for how to interact with the application.
    * 
    */
-  private void displayHelp() {}
+  private void displayHelp() {
+    StringBuilder sb = new StringBuilder();
+
+    sb.append( "\n\t" ).append( LIST_FILES )
+        .append( "\t: list files that have been written to disk.\n" );
+
+    sb.append( "\n\t" ).append( DISPLAY_DHT )
+        .append( "\t: display the routing DHT.\n" );
+
+    sb.append( "\n\t" ).append( DISPLAY_LEAF )
+        .append( "\t: display the leaf nodes as " )
+        .append( "{ clockwise, this, counter-clockwise }.\n" );
+
+    sb.append( "\n\t" ).append( EXIT )
+        .append( "\t\t: gracefully leave the network and distribute stored " )
+        .append( "files.\n" );
+
+    System.out.println( sb.toString() );
+  }
 
 }
