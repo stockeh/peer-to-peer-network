@@ -1,5 +1,8 @@
 package cs555.system.metadata;
 
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -27,6 +30,8 @@ public class PeerMetadata {
 
   private boolean initialized;
 
+  private final List<String> files;
+
   /**
    * Default Constructor -
    * 
@@ -38,6 +43,7 @@ public class PeerMetadata {
     this.lock = new ReentrantLock();
     this.condition = lock.newCondition();
     this.initialized = false;
+    this.files = new ArrayList<>();
   }
 
   /**
@@ -130,4 +136,26 @@ public class PeerMetadata {
     }
   }
 
+  /**
+   * 
+   * @param filename
+   */
+  public void addFile(String filename) {
+    if ( !files.contains( filename ) )
+    {
+      files.add( filename );
+    }
+  }
+
+  /**
+   * Sort by length, and then sort alphabetically -> this can be
+   * improved.
+   * 
+   * @return
+   */
+  public List<String> getSortedFiles() {
+    files.sort( Comparator.comparing( String::length )
+        .thenComparing( Comparator.naturalOrder() ) );
+    return files;
+  }
 }

@@ -39,13 +39,13 @@ public class Store implements Node {
 
   private static final Logger LOG = Logger.getInstance();
 
-  private static final String EXIT = "exit";
-
-  private static final String HELP = "help";
-
   private static final String UPLOAD = "upload";
 
   private static final String GET = "get";
+
+  private static final String EXIT = "exit";
+
+  private static final String HELP = "help";
 
   private final StoreMetadata metadata;
 
@@ -70,7 +70,7 @@ public class Store implements Node {
    * @param args
    */
   public static void main(String[] args) {
-    LOG.info( "peer node starting up at: " + new Date() );
+    LOG.info( "Store node starting up at: " + new Date() );
     try ( ServerSocket serverSocket = new ServerSocket( 0 ) )
     {
       Store node = new Store( InetAddress.getLocalHost().getHostName(),
@@ -351,6 +351,21 @@ public class Store implements Node {
    * Display a help message for how to interact with the application.
    * 
    */
-  private void displayHelp() {}
+  private void displayHelp() {
+    StringBuilder sb = new StringBuilder();
+
+    sb.append( "\n\t" ).append( UPLOAD )
+        .append( "\t: deliver a file to the network " )
+        .append( "-> upload /local_machine_path /fs_path\n" );
+
+    sb.append( "\n\t" ).append( GET )
+        .append( "\t: retrieve a previously uploaded file " )
+        .append( "-> get /fs_path /local_machine_path\n" );
+
+    sb.append( "\n\t" ).append( EXIT )
+        .append( "\t: gracefully shutdown the application.\n" );
+
+    System.out.println( sb.toString() );
+  }
 
 }

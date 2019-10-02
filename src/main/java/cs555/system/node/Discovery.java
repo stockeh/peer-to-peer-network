@@ -62,7 +62,7 @@ public class Discovery implements Node {
    * @param args
    */
   public static void main(String[] argas) {
-    LOG.debug( "discovery node starting up at: " + new Date() );
+    LOG.debug( "Discovery node starting up at: " + new Date() );
 
     try ( ServerSocket serverSocket =
         new ServerSocket( Properties.DISCOVERY_PORT ) )
@@ -229,7 +229,11 @@ public class Discovery implements Node {
    * 
    */
   private void displayHelp() {
-    System.out.println( "\n\t" + LIST_NODES
-        + "\t: list nodes that have registered with Discovery." );
+    StringBuilder sb = new StringBuilder();
+
+    sb.append( "\n\t" ).append( LIST_NODES )
+        .append( "\t: list nodes that have registered with Discovery.\n" );
+
+    System.out.println( sb.toString() );
   }
 }
