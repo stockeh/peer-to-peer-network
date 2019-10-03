@@ -210,7 +210,7 @@ public class Peer implements Node {
         break;
 
       case Protocol.JOIN_NETWORK_REQUEST :
-        LOG.info( event.toString() );
+        // LOG.info( event.toString() );
         join( event, connection );
         break;
 
@@ -223,7 +223,7 @@ public class Peer implements Node {
         break;
 
       case Protocol.DISCOVER_PEER_REQUEST :
-        LOG.info( event.toString() );
+        // LOG.info( event.toString() );
         lookup( event, connection );
         break;
 
@@ -590,7 +590,7 @@ public class Peer implements Node {
    * the form:
    * 
    * <p>
-   * <tt>{ clockwise, this, counter-clockwise }</tt>
+   * <tt>{ counter-clockwise <- this -> clockwise }</tt>
    * </p>
    * 
    */
@@ -670,8 +670,6 @@ public class Peer implements Node {
       TCPConnection lastPeerConnection) {
     LOG.debug( "Initializing Peer" );
     metadata.table().setTable( request.getTable() );
-    metadata.addSelfToTable();
-    metadata.table().display();
 
     PeerInformation trace = null;
     StringBuilder sb = new StringBuilder( "Network Join Trace:" );
@@ -705,7 +703,7 @@ public class Peer implements Node {
     Stream.of( metadata.table().getTable() ).flatMap( Stream::of )
         .forEach( peer ->
         {
-          if ( peer != null && !peer.equals( metadata.self() ) )
+          if ( peer != null )
           {
             LOG.debug( "Send Data to: " + peer.toString() );
             try
@@ -724,6 +722,9 @@ public class Peer implements Node {
     connections.closeCachedConnections();
 
     constructLeafSet();
+
+    metadata.addSelfToTable();
+    metadata.table().display();
   }
 
   /**

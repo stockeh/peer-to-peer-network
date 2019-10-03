@@ -1,23 +1,29 @@
 #!/bin/bash
 #
-# Run script for MacOSX.  Run in the top level directory of project.
-# discovery will start in the terminal, and a new window will be opened.
-# This new window will spawn MULTI + 1 Chunk Servers.
+###################################################################
+# Peer to Peer Network - Jason D Stock - stock - October 02, 2019 #
+###################################################################
 #
-
-MULTI="1 2"
+# Run script for local MacOSX cluster.
+#
+# Configure the 'conf/machine_list' to specify the number of peers to join and
+# any line arguments. Discovery will start in the terminal, then a new window
+# will be opened for the Peer and the Store to run. Execute './osx.sh' to start
+# the list of Peers, and run './osx.sh s' to start the Store node.
 
 DIR="$( cd "$( dirname "$0" )" && pwd )"
-JAR_PATH="$DIR/conf/:$DIR/build/libs/fault-tolerant-file-system.jar"
+JAR_PATH="$DIR/conf/:$DIR/build/libs/peer-to-peer-network.jar"
+MACHINE_LIST="$DIR/conf/machine_list"
 COMPILE="$( ps -ef | grep [c]s555.system.node.Discovery )"
 
-SCRIPT="java -cp $JAR_PATH cs555.system.node.Peer;"
+SCRIPT="java -cp $JAR_PATH cs555.system.node.Peer"
 
 function new_tab() {
+    ARG=`echo $1 | cut -d"+" -f2`
     osascript \
         -e "tell application \"Terminal\"" \
         -e "tell application \"System Events\" to keystroke \"t\" using {command down}" \
-        -e "do script \"$SCRIPT\" in front window" \
+        -e "do script \"$SCRIPT $ARG\"  in front window" \
         -e "end tell" > /dev/null
 }
 
@@ -30,16 +36,12 @@ LINES=`find . -name "*.java" -print | xargs wc -l | grep "total" | awk '{$1=$1};
     open -a Terminal .
     open -a Terminal .
     java -cp $JAR_PATH cs555.system.node.Discovery;
-elif [ $1 = "c" ]
+elif [ "$1" = "s" ]
 then
-    java -cp $JAR_PATH cs555.system.node.Peer;
+    java -cp $JAR_PATH cs555.system.node.Store;
 else
-    if [ -n "$MULTI" ]
-    then
-        for tab in `echo $MULTI`
-        do
-            new_tab
-        done
-    fi
-    eval $SCRIPT
+    for i in `cat $MACHINE_LIST`
+    do
+        new_tab "$i"
+    done
 fi
