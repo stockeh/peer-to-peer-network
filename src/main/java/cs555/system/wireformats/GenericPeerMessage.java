@@ -151,6 +151,7 @@ public class GenericPeerMessage implements Event {
    */
   @Override
   public String toString() {
-    return type + " | " + peer.toString();
+    return Protocol.class.getFields()[ type ].getName().toString() + " | "
+        + peer.toString();
   }
 }

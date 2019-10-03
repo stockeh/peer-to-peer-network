@@ -26,6 +26,7 @@ import cs555.system.wireformats.DataTransfer;
 import cs555.system.wireformats.DiscoverNodeResponse;
 import cs555.system.wireformats.DiscoverPeerRequest;
 import cs555.system.wireformats.Event;
+import cs555.system.wireformats.GenericMessage;
 import cs555.system.wireformats.GenericPeerMessage;
 import cs555.system.wireformats.JoinNetwork;
 import cs555.system.wireformats.Protocol;
@@ -154,13 +155,8 @@ public class Peer implements Node {
       String[] input = scan.nextLine().toLowerCase().split( "\\s+" );
       switch ( input[ 0 ] )
       {
-
         case LIST_FILES :
-          StringBuilder sb = ( new StringBuilder( "Files Stored on " ) )
-              .append( metadata.self().toString() ).append( " include \n\n" );
-          metadata.getSortedFiles()
-              .forEach( v -> sb.append( v ).append( "\n" ) );
-          LOG.info( sb.toString() );
+          LOG.info( metadata.filesToString() );
           break;
 
         case DISPLAY_DHT :
@@ -214,6 +210,7 @@ public class Peer implements Node {
         break;
 
       case Protocol.JOIN_NETWORK_REQUEST :
+        LOG.info( event.toString() );
         join( event, connection );
         break;
 
@@ -226,12 +223,56 @@ public class Peer implements Node {
         break;
 
       case Protocol.DISCOVER_PEER_REQUEST :
+        LOG.info( event.toString() );
         lookup( event, connection );
         break;
 
       case Protocol.STORE_DATA_REQUEST :
         write( event, connection );
         break;
+
+      case Protocol.READ_DATA_REQUEST :
+        read( event, connection );
+    }
+  }
+
+  /**
+   * Read a file on the request peer if it exists.
+   * 
+   * <p>
+   * Data is stored by the specified {@code fileSystemPath} and a unique
+   * host connection string.
+   * </p>
+   * 
+   * @param event
+   * @param connection from the Store that will be used for response
+   */
+  private void read(Event event, TCPConnection connection) {
+    GenericMessage request = ( GenericMessage ) event;
+
+    String fileSystemPath =
+        request.getMessage() + "-" + metadata.self().getConnection();
+    Path path =
+        Paths.get( File.separator, "tmp", "stock", "pastry", fileSystemPath );
+    byte[] data = null;
+    try
+    {
+      data = Files.readAllBytes( path );
+    } catch ( IOException e )
+    {
+      LOG.error( "Unable to read " + fileSystemPath + " from disk. "
+          + e.getMessage() );
+      e.printStackTrace();
+    }
+    try
+    {
+      connection.getTCPSender()
+          .sendData( ( new DataTransfer( Protocol.READ_DATA_RESPONSE, data,
+              metadata.self().toString() ) ).getBytes() );
+    } catch ( IOException e )
+    {
+      LOG.error( "Unable to send message to store. " + e.getMessage() );
+      e.printStackTrace();
     }
   }
 
@@ -249,9 +290,9 @@ public class Peer implements Node {
    */
   private void write(Event event, TCPConnection connection) {
     DataTransfer request = ( DataTransfer ) event;
-    metadata.addFile( request.getFileSystemPath() );
+    metadata.addFile( request.getDescriptor() );
     String fileSystemPath =
-        request.getFileSystemPath() + "-" + metadata.self().getConnection();
+        request.getDescriptor() + "-" + metadata.self().getConnection();
     Path path =
         Paths.get( File.separator, "tmp", "stock", "pastry", fileSystemPath );
     boolean success = Constants.SUCCESS;

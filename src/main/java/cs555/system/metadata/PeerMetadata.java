@@ -1,5 +1,6 @@
 package cs555.system.metadata;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -140,7 +141,7 @@ public class PeerMetadata {
    * 
    * @param filename
    */
-  public void addFile(String filename) {
+  public synchronized void addFile(String filename) {
     if ( !files.contains( filename ) )
     {
       files.add( filename );
@@ -148,14 +149,23 @@ public class PeerMetadata {
   }
 
   /**
-   * Sort by length, and then sort alphabetically -> this can be
-   * improved.
    * 
-   * @return
+   * @return the {@code String} representation of the files stored on
+   *         this peer, or an error message if none are.
    */
-  public List<String> getSortedFiles() {
+  public synchronized String filesToString() {
+    StringBuilder sb = new StringBuilder();
+    if ( files.isEmpty() )
+    {
+      return sb.append( "There are no files stored on peer " )
+          .append( self.toString() ).toString();
+    }
     files.sort( Comparator.comparing( String::length )
         .thenComparing( Comparator.naturalOrder() ) );
-    return files;
+    sb.append( "Files stored on " ).append( self.toString() )
+        .append( " include: \n\n" );
+    files
+        .forEach( v -> sb.append( File.separator ).append( v ).append( "\n" ) );
+    return sb.toString();
   }
 }

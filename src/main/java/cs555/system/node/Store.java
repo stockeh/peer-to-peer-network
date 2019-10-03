@@ -112,7 +112,7 @@ public class Store implements Node {
           break;
 
         case GET :
-          lookup( input );
+          get( input );
           break;
 
         case "fake" :
@@ -139,7 +139,7 @@ public class Store implements Node {
 
   // TODO: DELETE ME. I AM A FAKE HELPER METHOD.
   private void FAKEUPLOAD(String[] input) {
-    if ( metadata.writable() )
+    if ( metadata.transferable() )
     {
       String identifier = input[ 1 ];
       LOG.info(
@@ -178,11 +178,27 @@ public class Store implements Node {
    * 
    * @param input
    */
-  private void lookup(String[] input) {
+  private void get(String[] input) {
     if ( input.length != 3 )
     {
       LOG.error( "USAGE: get /fs_path /local_machine_path || "
           + "get /greta.jpeg data/" );
+      return;
+    }
+    if ( metadata.transferable() )
+    {
+      metadata.setDataTransferType( StoreMetadata.READ );
+
+      String fileSystemPath = input[ 1 ];
+      Path localPath = Paths.get( input[ 2 ] + fileSystemPath.substring(
+          fileSystemPath.lastIndexOf( File.separator ) + 1,
+          fileSystemPath.length() ) );
+
+      initTransfer( localPath, fileSystemPath );
+    } else
+    {
+      LOG.info(
+          "The Store is in a non-transferable state. Try again shortly." );
     }
   }
 
@@ -211,35 +227,50 @@ public class Store implements Node {
           + "upload data/greta.jpeg /" );
       return;
     }
-    if ( metadata.writable() )
+    if ( metadata.transferable() )
     {
+      metadata.setDataTransferType( StoreMetadata.WRITE );
       Path localPath = Paths.get( input[ 1 ] );
       String fileSystemPath = input[ 2 ].endsWith( File.separator ) ? input[ 2 ]
           : input[ 2 ] + File.separator;
       fileSystemPath += localPath.getFileName().toString();
-      String identifier =
-          IdentifierUtilities.CRC16CCITT( fileSystemPath.getBytes() );
-      LOG.info( "Data Has Identifier: " + identifier
-          + ", based off the name /fs_path and file name." );
-      metadata.item().setIdentifier( identifier );
-      metadata.setLocalPath( localPath );
-      metadata.setFileSystemPath( fileSystemPath );
-      try
-      {
-        TCPConnection connection = ConnectionUtilities.establishConnection(
-            this, Properties.DISCOVERY_HOST, Properties.DISCOVERY_PORT );
-        connection.submitTo( executorService );
-        connection.getTCPSender()
-            .sendData( ( new GenericMessage( Protocol.DISCOVER_NODE_REQUEST ) )
-                .getBytes() );
-      } catch ( IOException e )
-      {
-        LOG.error( "Unable to send message to Discovery. " + e.getMessage() );
-        e.printStackTrace();
-      }
+
+      initTransfer( localPath, fileSystemPath );
     } else
     {
-      LOG.info( "The Store is currently writing a file. Try again shortly." );
+      LOG.info(
+          "The Store is in a non-transferable state. Try again shortly." );
+    }
+  }
+
+  /**
+   * Initialize the transfer between the Store and the network for both
+   * the the read and writing transfer types.
+   * 
+   * @param localPath for where the file is / will be stored on the
+   *        local file system
+   * @param fileSystemPath for where the file is to be stored / read
+   *        from in the network file system
+   */
+  private void initTransfer(Path localPath, String fileSystemPath) {
+    String identifier =
+        IdentifierUtilities.CRC16CCITT( fileSystemPath.getBytes() );
+    LOG.info( "Data Has Identifier: " + identifier + ", based off the name "
+        + fileSystemPath );
+    metadata.item().setIdentifier( identifier );
+    metadata.setLocalPath( localPath );
+    metadata.setFileSystemPath( fileSystemPath );
+    try
+    {
+      TCPConnection connection = ConnectionUtilities.establishConnection( this,
+          Properties.DISCOVERY_HOST, Properties.DISCOVERY_PORT );
+      connection.submitTo( executorService );
+      connection.getTCPSender().sendData(
+          ( new GenericMessage( Protocol.DISCOVER_NODE_REQUEST ) ).getBytes() );
+    } catch ( IOException e )
+    {
+      LOG.error( "Unable to send message to Discovery. " + e.getMessage() );
+      e.printStackTrace();
     }
   }
 
@@ -257,13 +288,56 @@ public class Store implements Node {
         break;
 
       case Protocol.DISCOVER_PEER_REQUEST :
-        deliver( event, connection );
+        transferData( event, connection );
         break;
 
       case Protocol.STORE_DATA_RESPONSE :
-        deliveryResponse( event, connection );
+        writeResponse( event, connection );
+        break;
+
+      case Protocol.READ_DATA_RESPONSE :
+        readResponse( event, connection );
         break;
     }
+  }
+
+  /**
+   * Process the response message from the peer containing the requested
+   * file.
+   * 
+   * @param event
+   * @param connection
+   */
+  private void readResponse(Event event, TCPConnection connection) {
+    connection.close();
+    DataTransfer response = ( DataTransfer ) event;
+
+    byte[] data = response.getData();
+    StringBuilder sb =
+        ( new StringBuilder() ).append( "The read request from peer ( " )
+            .append( response.getDescriptor() ).append( ") for " )
+            .append( metadata.getFileSystemPath() ).append( " | " )
+            .append( metadata.item().getIdentifier() ).append( " was " );
+    if ( data == null )
+    {
+      sb.append( "NOT successful!" );
+      LOG.info( sb.toString() );
+    } else
+    {
+      sb.append( "successful!" );
+      LOG.info( sb.toString() );
+      String fs = metadata.getLocalPath().toAbsolutePath().toString();
+      try
+      {
+        Files.write( metadata.getLocalPath(), data );
+        LOG.info( "Finished writing " + fs + " to disk." );
+      } catch ( IOException e )
+      {
+        LOG.error( "Unable to save " + fs + " to disk. " + e.getMessage() );
+        e.printStackTrace();
+      }
+    }
+    metadata.reset();
   }
 
   /**
@@ -273,7 +347,7 @@ public class Store implements Node {
    * @param event
    * @param connection
    */
-  private void deliveryResponse(Event event, TCPConnection connection) {
+  private void writeResponse(Event event, TCPConnection connection) {
     connection.close();
     GenericPeerMessage response = ( GenericPeerMessage ) event;
 
@@ -289,6 +363,44 @@ public class Store implements Node {
     sb.append( "successful!" );
     LOG.info( sb.toString() );
     metadata.reset();
+  }
+
+  /**
+   * Deliver the file to the destination once a peer has responded to
+   * this Store containing details of where to deliver the data.
+   * 
+   * @param event
+   * @param connection to the peer that will hold the data
+   */
+  private void transferData(Event event, TCPConnection connection) {
+    DiscoverPeerRequest request = ( DiscoverPeerRequest ) event;
+
+    StringBuilder sb = new StringBuilder( "Network Route Trace:" );
+    for ( String s : request.getNetworkTraceIdentifiers() )
+    {
+      sb.append( " -> " ).append( s );
+    }
+    LOG.info( sb.toString() );
+    try
+    {
+      byte[] content;
+      if ( metadata.getDataTransferType() == StoreMetadata.WRITE )
+      {
+        content = Files.readAllBytes( metadata.getLocalPath() );
+        connection.getTCPSender()
+            .sendData( ( new DataTransfer( Protocol.STORE_DATA_REQUEST, content,
+                metadata.getFileSystemPath() ) ).getBytes() );
+      } else
+      {
+        connection.getTCPSender()
+            .sendData( ( new GenericMessage( Protocol.READ_DATA_REQUEST,
+                metadata.getFileSystemPath() ) ).getBytes() );
+      }
+    } catch ( IOException e )
+    {
+      LOG.error( "Unable to upload file. " + e.getMessage() );
+      e.printStackTrace();
+    }
   }
 
   /**
@@ -316,36 +428,6 @@ public class Store implements Node {
       e.printStackTrace();
     }
   }
-
-  /**
-   * Deliver the file to the destination once a peer has responded to
-   * this Store containing details of where to deliver the data.
-   * 
-   * @param event
-   * @param connection to the peer that will hold the data
-   */
-  private void deliver(Event event, TCPConnection connection) {
-    DiscoverPeerRequest request = ( DiscoverPeerRequest ) event;
-
-    StringBuilder sb = new StringBuilder( "Network Route Trace:" );
-    for ( String s : request.getNetworkTraceIdentifiers() )
-    {
-      sb.append( " -> " ).append( s );
-    }
-    LOG.info( sb.toString() );
-    try
-    {
-      byte[] content = Files.readAllBytes( metadata.getLocalPath() );
-      connection.getTCPSender()
-          .sendData( ( new DataTransfer( Protocol.STORE_DATA_REQUEST, content,
-              metadata.getFileSystemPath() ) ).getBytes() );
-    } catch ( IOException e )
-    {
-      LOG.error( "Unable to upload file. " + e.getMessage() );
-      e.printStackTrace();
-    }
-  }
-
 
   /**
    * Display a help message for how to interact with the application.

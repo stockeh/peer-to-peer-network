@@ -7,6 +7,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import cs555.system.util.Constants;
 
 /**
  * 
@@ -19,7 +20,7 @@ public class DataTransfer implements Event {
 
   private byte[] data;
 
-  private String fileSystemPath;
+  private String descriptor;
 
   /**
    * Default constructor -
@@ -28,7 +29,7 @@ public class DataTransfer implements Event {
   public DataTransfer(int type, byte[] data, String fileSystemPath) {
     this.type = type;
     this.data = data;
-    this.fileSystemPath = fileSystemPath;
+    this.descriptor = fileSystemPath;
   }
 
   /**
@@ -46,15 +47,17 @@ public class DataTransfer implements Event {
 
     this.type = din.readInt();
 
-    int len = din.readInt();
-    this.data = new byte[ len ];
-    din.readFully( this.data );
+    if ( din.readBoolean() == Constants.SUCCESS )
+    {
+      int len = din.readInt();
+      this.data = new byte[ len ];
+      din.readFully( this.data );
+    }
 
-    len = din.readInt();
+    int len = din.readInt();
     byte[] pathname = new byte[ len ];
     din.readFully( pathname );
-
-    fileSystemPath = new String( pathname );
+    descriptor = new String( pathname );
 
     inputStream.close();
     din.close();
@@ -76,8 +79,13 @@ public class DataTransfer implements Event {
     return data;
   }
 
-  public String getFileSystemPath() {
-    return fileSystemPath;
+  /**
+   * 
+   * @return get the file system path or the peer information as a
+   *         response
+   */
+  public String getDescriptor() {
+    return descriptor;
   }
 
   /**
@@ -92,10 +100,17 @@ public class DataTransfer implements Event {
 
     dout.writeInt( type );
 
-    dout.writeInt( data.length );
-    dout.write( data );
+    if ( data == null )
+    {
+      dout.writeBoolean( Constants.FAILURE );
+    } else
+    {
+      dout.writeBoolean( Constants.SUCCESS );
+      dout.writeInt( data.length );
+      dout.write( data );
+    }
 
-    byte[] filepath = fileSystemPath.getBytes();
+    byte[] filepath = descriptor.getBytes();
     dout.writeInt( filepath.length );
     dout.write( filepath );
 
@@ -109,7 +124,7 @@ public class DataTransfer implements Event {
 
   @Override
   public String toString() {
-    return "\n" + type;
+    return Protocol.class.getFields()[ type ].getName().toString();
   }
 
 }
