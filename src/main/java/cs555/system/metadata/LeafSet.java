@@ -105,9 +105,9 @@ public class LeafSet {
    */
   public String toString() {
     return ( new StringBuilder( "Updated Leaf Set: { " ) )
-        .append( cw.getIdentifier() ).append( " <- " )
+        .append( ccw.getIdentifier() ).append( " <- " )
         .append( self.getIdentifier() ).append( " -> " )
-        .append( ccw.getIdentifier() ).append( " }" ).toString();
+        .append( cw.getIdentifier() ).append( " }" ).toString();
   }
 
 }
