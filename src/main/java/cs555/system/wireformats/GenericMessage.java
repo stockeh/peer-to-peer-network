@@ -17,12 +17,24 @@ public class GenericMessage implements Event {
 
   private int type;
 
+  private String message;
+
   /**
-   * Default constructor -
+   * Constructor with no message
    * 
    */
   public GenericMessage(int type) {
     this.type = type;
+    this.message = "";
+  }
+
+  /**
+   * Constructor with assigned message
+   * 
+   */
+  public GenericMessage(int type, String message) {
+    this.type = type;
+    this.message = message;
   }
 
   /**
@@ -40,6 +52,11 @@ public class GenericMessage implements Event {
 
     this.type = din.readInt();
 
+    int len = din.readInt();
+    byte[] pathname = new byte[ len ];
+    din.readFully( pathname );
+    this.message = new String( pathname );
+
     inputStream.close();
     din.close();
   }
@@ -50,6 +67,14 @@ public class GenericMessage implements Event {
   @Override
   public int getType() {
     return type;
+  }
+
+  /**
+   * 
+   * @return
+   */
+  public String getMessage() {
+    return message;
   }
 
   /**
@@ -64,6 +89,10 @@ public class GenericMessage implements Event {
 
     dout.writeInt( type );
 
+    byte[] msg = message.getBytes();
+    dout.writeInt( msg.length );
+    dout.write( msg );
+    
     dout.flush();
     marshalledBytes = outputStream.toByteArray();
 

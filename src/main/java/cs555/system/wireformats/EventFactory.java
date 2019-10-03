@@ -61,6 +61,7 @@ public class EventFactory {
 
       case Protocol.IDENTIFIER_COLLISION :
       case Protocol.DISCOVER_NODE_REQUEST :
+      case Protocol.READ_DATA_REQUEST :
         return new GenericMessage( marshalledBytes );
 
       case Protocol.DISCOVER_NODE_RESPONSE :
@@ -73,6 +74,7 @@ public class EventFactory {
         return new DiscoverPeerRequest( marshalledBytes );
 
       case Protocol.STORE_DATA_REQUEST :
+      case Protocol.READ_DATA_RESPONSE :
         return new DataTransfer( marshalledBytes );
 
       default :

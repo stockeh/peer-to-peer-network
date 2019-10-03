@@ -12,11 +12,17 @@ import java.nio.file.Path;
  */
 public class StoreMetadata {
 
+  public final static boolean WRITE = true;
+
+  public final static boolean READ = false;
+
   private final PeerInformation item;
 
   private Path localPath;
 
   private String fileSystemPath;
+
+  private boolean dataTransferType;
 
   /**
    * Default constructor - sets the host and port for the Store, and
@@ -28,6 +34,7 @@ public class StoreMetadata {
    */
   public StoreMetadata(String host, int port) {
     this.item = new PeerInformation( null, host, port );
+    this.dataTransferType = false;
   }
 
   /**
@@ -50,19 +57,27 @@ public class StoreMetadata {
 
   /**
    * 
-   * @param path
-   */
-  public void setLocalPath(Path path) {
-    this.localPath = path;
-  }
-
-  /**
-   * 
    * @return the path, as a {@code String} of where a file should be
    *         written to on the peer (once discovered)
    */
   public String getFileSystemPath() {
     return fileSystemPath;
+  }
+
+  /**
+   * 
+   * @return
+   */
+  public boolean getDataTransferType() {
+    return dataTransferType;
+  }
+
+  /**
+   * 
+   * @param path
+   */
+  public void setLocalPath(Path path) {
+    this.localPath = path;
   }
 
   /**
@@ -78,9 +93,17 @@ public class StoreMetadata {
 
   /**
    * 
+   * @param type
+   */
+  public void setDataTransferType(boolean type) {
+    dataTransferType = type;
+  }
+
+  /**
+   * 
    * @return true if the store can write, false otherwise
    */
-  public boolean writable() {
+  public boolean transferable() {
     return item.getIdentifier() == null;
   }
 
