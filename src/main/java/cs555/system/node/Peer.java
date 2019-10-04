@@ -8,7 +8,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Date;
-import java.util.List;
 import java.util.Scanner;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -409,43 +408,8 @@ public class Peer implements Node {
         return peer;
       } else
       { // 3.
-        int dest =
-            Integer.parseInt( request.getDestination().getIdentifier(), 16 );
-        int diff = Integer.MAX_VALUE, other, temp_diff;
-        PeerInformation closest = null, temp;
-        for ( ; row < Constants.NUMBER_OF_ROWS; ++row )
-        {
-          for ( int i = 1; i < 8; ++i )
-          {
-            // clockwise
-            int col = ( destCol + i ) & 0xF;
-            temp = metadata.table().getTableIndex( row, col );
-            if ( temp != null )
-            {
-              other = Integer.parseInt( temp.getIdentifier(), 16 );
-              temp_diff = ( other - dest ) & 0xFFFF;
-              if ( temp_diff < diff )
-              {
-                diff = temp_diff;
-                closest = temp;
-              }
-            }
-            // counter-clockwise
-            col = ( destCol - i ) & 0xF;
-            temp = metadata.table().getTableIndex( row, col );
-            if ( temp != null )
-            {
-              other = Integer.parseInt( temp.getIdentifier(), 16 );
-              temp_diff = ( dest - other ) & 0xFFFF;
-              if ( temp_diff < diff )
-              {
-                diff = temp_diff;
-                closest = temp;
-              }
-            }
-          }
-        }
-        return closest;
+        return metadata.table().closest( metadata.self(),
+            request.getDestination(), row );
       }
     }
   }
@@ -474,20 +438,8 @@ public class Peer implements Node {
    * @param event
    */
   private synchronized void updateRoutingTable(Event event) {
-    PeerInformation peer = ( ( GenericPeerMessage ) event ).getPeer();
-
-    for ( int row = 0; row < Constants.NUMBER_OF_ROWS; ++row )
-    {
-      int selfCol =
-          Character.digit( metadata.self().getIdentifier().charAt( row ), 16 );
-      int destCol = Character.digit( peer.getIdentifier().charAt( row ), 16 );
-
-      if ( selfCol - destCol != 0 )
-      {
-        metadata.table().addPeerToTable( peer, row );
-        break;
-      }
-    }
+    LOG.info( "Updating Routing Table: " );
+    metadata.addPeerToTable( ( ( GenericPeerMessage ) event ).getPeer() );
     metadata.table().display();
   }
 
@@ -503,13 +455,13 @@ public class Peer implements Node {
    */
   private synchronized void join(Event event, TCPConnection connection) {
     JoinNetwork request = ( JoinNetwork ) event;
+    connection.close();
     if ( metadata.self().equals( request.getDestination() ) )
     {
-      initializeDHT( request, connection );
+      initializeDHT( request );
       metadata.initialized();
     } else
     {
-      final boolean isSourcePeer = request.getRowIndex() == 0;
       try
       {
         metadata.getLock().lock();
@@ -517,7 +469,7 @@ public class Peer implements Node {
         {
           metadata.getCondition().await();
         }
-        constructDHT( request, isSourcePeer, connection );
+        constructDHT( request );
       } catch ( IOException | InterruptedException e )
       {
         e.printStackTrace();
@@ -532,53 +484,71 @@ public class Peer implements Node {
    * Construct the DHT for the peer requesting to join the network.
    * 
    * @param request
-   * @param isSourcePeer
-   * @param connection
    * @throws IOException
    */
-  private synchronized void constructDHT(JoinNetwork request,
-      final boolean isSourcePeer, TCPConnection connection) throws IOException {
+  private synchronized void constructDHT(JoinNetwork request)
+      throws IOException {
 
-    int row = request.getRowIndex();
-    request.setTableRow( metadata.table().getTableRow( row ) );
+    int row = request.getRow();
+
+    if ( row == request.getNetworkTraceIdentifiers().size() )
+    {
+      request.setTableRow( metadata.table().getTableRow( row ) );
+    }
+    request.addNetworkTraceRoute( metadata.self().getIdentifier() );
 
     int selfCol =
         Character.digit( metadata.self().getIdentifier().charAt( row ), 16 );
     int destCol = Character
         .digit( request.getDestination().getIdentifier().charAt( row ), 16 );
 
-    request.addNetworkTraceRoute( selfCol );
-
     if ( selfCol == destCol )
     {
-      constructDHT( request, isSourcePeer, connection );
+      request.incrementRow();
+      constructDHT( request );
     } else
     {
       PeerInformation peer = metadata.table().getTableIndex( row, destCol );
-
       if ( peer != null )
       {
+        request.incrementRow();
         TCPConnection intermediate = ConnectionUtilities
             .establishConnection( this, peer.getHost(), peer.getPort() );
         intermediate.getTCPSender().sendData( request.getBytes() );
       } else
       {
-        if ( isSourcePeer )
+        peer = metadata.table().closest( metadata.self(),
+            request.getDestination(), row );
+        if ( peer.equals( metadata.self() ) )
         {
-          connection.getTCPSender().sendData( request.getBytes() );
-        } else
-        {
+          if ( !metadata.leaf().isPopulated() )
+          {
+            request.setCW( metadata.self() );
+            request.setCCW( metadata.self() );
+          } else
+          {
+            if ( metadata.leaf()
+                .isBetweenClockwise( request.getDestination() ) )
+            {
+              request.setCW( metadata.leaf().getCW() );
+              request.setCCW( metadata.self() );
+            } else
+            {
+              request.setCW( metadata.self() );
+              request.setCCW( metadata.leaf().getCCW() );
+            }
+          }
           TCPConnection destination = ConnectionUtilities.establishConnection(
               this, request.getDestination().getHost(),
               request.getDestination().getPort() );
-          destination.submitTo( executorService );
           destination.getTCPSender().sendData( request.getBytes() );
+        } else
+        {
+          TCPConnection intermediate = ConnectionUtilities
+              .establishConnection( this, peer.getHost(), peer.getPort() );
+          intermediate.getTCPSender().sendData( request.getBytes() );
         }
       }
-    }
-    if ( !isSourcePeer )
-    {
-      connection.close(); // close connections between intermediate peers
     }
   }
 
@@ -593,61 +563,35 @@ public class Peer implements Node {
    * <tt>{ counter-clockwise <- this -> clockwise }</tt>
    * </p>
    * 
+   * @param joinRequest
+   * @param data
+   * 
    */
-  private void constructLeafSet() {
-    PeerInformation cw = null, ccw = null;
-    int selfCol, col;
-
-    rows: for ( int row = Constants.NUMBER_OF_ROWS - 1; row >= 0; --row )
-    {
-      selfCol =
-          Character.digit( metadata.self().getIdentifier().charAt( row ), 16 );
-
-      for ( int i = 1; i < 16; ++i )
-      {
-        if ( cw == null )
-        {
-          col = selfCol + i;
-          if ( col < 16 || row == 0 )
-          {
-            col = col & 0xF;
-            cw = metadata.table().getTableIndex( row, col );
-          }
-        }
-        if ( ccw == null )
-        {
-          col = selfCol - i;
-          if ( col >= 0 || row == 0 )
-          {
-            col = col & 0xF;
-            ccw = metadata.table().getTableIndex( row, col );
-          }
-        }
-        if ( cw != null && ccw != null )
-        {
-          break rows;
-        }
-      }
-    }
+  private void constructLeafSet(JoinNetwork joinRequest, byte[] data) {
+    PeerInformation cw = joinRequest.getCW(), ccw = joinRequest.getCCW();
     try
     {
-      // request flag false for cw, true for ccw
-      GenericPeerMessage request = new GenericPeerMessage(
-          Protocol.FORWARD_LEAF_IDENTIFIER, metadata.self(), false );
+      GenericPeerMessage request =
+          new GenericPeerMessage( Protocol.FORWARD_LEAF_IDENTIFIER,
+              metadata.self(), Constants.COUNTER_CLOCKWISE );
 
-      TCPConnection connection = ConnectionUtilities.establishConnection( this,
-          cw.getHost(), cw.getPort() );
+      TCPConnection connection = connections.cacheConnection( this, cw, false );
 
       metadata.leaf().setLeaf( cw, Constants.CLOCKWISE );
+      metadata.addPeerToTable( cw );
       request.setFlag( Constants.COUNTER_CLOCKWISE );
+      LOG.debug( "Sending Data to: " + cw.toString() );
       connection.getTCPSender().sendData( request.getBytes() );
+      connection.getTCPSender().sendData( data );
 
-      connection = ConnectionUtilities.establishConnection( this, ccw.getHost(),
-          ccw.getPort() );
+      connection = connections.cacheConnection( this, ccw, false );
 
       metadata.leaf().setLeaf( ccw, Constants.COUNTER_CLOCKWISE );
+      metadata.addPeerToTable( ccw );
       request.setFlag( Constants.CLOCKWISE );
+      LOG.debug( "Sending Data to: " + ccw.toString() );
       connection.getTCPSender().sendData( request.getBytes() );
+      connection.getTCPSender().sendData( data );
     } catch ( IOException e )
     {
       LOG.error(
@@ -664,35 +608,23 @@ public class Peer implements Node {
    * and the routing table for reference.
    * 
    * @param request
-   * @param lastPeerConnection
    */
-  private synchronized void initializeDHT(JoinNetwork request,
-      TCPConnection lastPeerConnection) {
+  private synchronized void initializeDHT(JoinNetwork request) {
     LOG.debug( "Initializing Peer" );
     metadata.table().setTable( request.getTable() );
 
-    PeerInformation trace = null;
-    StringBuilder sb = new StringBuilder( "Network Join Trace:" );
-    List<Short> networkTraceIndex = request.getNetworkTraceIndex();
-    for ( int i = 0; i < networkTraceIndex.size(); ++i )
+    StringBuilder sb = new StringBuilder( "Network Route Trace:" );
+    for ( String s : request.getNetworkTraceIdentifiers() )
     {
-      PeerInformation s = request.getTable()[ i ][ networkTraceIndex.get( i ) ];
-      if ( !s.equals( trace ) && !s.equals( metadata.self() ) )
-      {
-        sb.append( " -> " ).append( s.getIdentifier() );
-        trace = s;
-      }
+      sb.append( " -> " ).append( s );
     }
-    // the last peer connection to contact this peer should be the last
-    // traced in the join request, and therefore the calling connection.
-    connections.addConnection( trace, lastPeerConnection );
     LOG.info( sb.toString() );
 
     byte[] data;
     try
     {
       data = new GenericPeerMessage( Protocol.FORWARD_PEER_IDENTIFIER,
-          metadata.self(), false ).getBytes();
+          metadata.self() ).getBytes();
     } catch ( IOException e )
     {
       LOG.error( "Unable to send create output stream for message. "
@@ -705,7 +637,7 @@ public class Peer implements Node {
         {
           if ( peer != null )
           {
-            LOG.debug( "Send Data to: " + peer.toString() );
+            LOG.debug( "Sending Data to: " + peer.toString() );
             try
             {
               TCPConnection connection =
@@ -719,10 +651,9 @@ public class Peer implements Node {
             }
           }
         } );
+    constructLeafSet( request, data );
     connections.closeCachedConnections();
-
-    constructLeafSet();
-
+    
     metadata.addSelfToTable();
     metadata.table().display();
   }
@@ -752,8 +683,8 @@ public class Peer implements Node {
           "Connecting to the DHT through source node: " + source.toString() );
       try
       {
-        TCPConnection sourceConnection =
-            connections.cacheConnection( this, source, true );
+        TCPConnection sourceConnection = ConnectionUtilities
+            .establishConnection( this, source.getHost(), source.getPort() );
         sourceConnection.getTCPSender()
             .sendData( ( new JoinNetwork( metadata.self() ) ).getBytes() );
       } catch ( IOException e )

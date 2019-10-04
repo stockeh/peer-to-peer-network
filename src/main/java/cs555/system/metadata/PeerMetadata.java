@@ -138,6 +138,25 @@ public class PeerMetadata {
   }
 
   /**
+   * Add a peer to all applicable locations in the routing table.
+   * 
+   * @param peer
+   */
+  public void addPeerToTable(PeerInformation peer) {
+    for ( int row = 0; row < Constants.NUMBER_OF_ROWS; ++row )
+    {
+      int selfCol = Character.digit( self.getIdentifier().charAt( row ), 16 );
+      int destCol = Character.digit( peer.getIdentifier().charAt( row ), 16 );
+
+      if ( selfCol - destCol != 0 )
+      {
+        table.addPeerToTable( peer, row );
+        break;
+      }
+    }
+  }
+
+  /**
    * 
    * @param filename
    */

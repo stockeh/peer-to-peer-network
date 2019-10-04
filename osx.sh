@@ -23,7 +23,7 @@ function new_tab() {
     osascript \
         -e "tell application \"Terminal\"" \
         -e "tell application \"System Events\" to keystroke \"t\" using {command down}" \
-        -e "do script \"$SCRIPT $ARG\"  in front window" \
+        -e "do script \"$SCRIPT $ARG\" in front window" \
         -e "end tell" > /dev/null
 }
 
@@ -43,5 +43,6 @@ else
     for i in `cat $MACHINE_LIST`
     do
         new_tab "$i"
+        # sleep 0.30
     done
 fi

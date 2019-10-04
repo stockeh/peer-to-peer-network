@@ -52,6 +52,33 @@ public class LeafSet {
       this.ccw = peer;
     }
   }
+  
+  public PeerInformation getCW() {
+    return cw;
+  }
+  
+  public PeerInformation getCCW() {
+    return ccw;
+  }
+
+  /**
+   * 
+   * @param other
+   * @return
+   */
+  public boolean isBetweenClockwise(PeerInformation other) {
+    int o = Integer.parseInt( other.getIdentifier(), 16 );
+    int s = Integer.parseInt( self.getIdentifier(), 16 );
+    int cw = Integer.parseInt( this.cw.getIdentifier(), 16 );
+
+    if ( isBetween( o, cw, s ) )
+    {
+      return true;
+    } else
+    {
+      return false;
+    }
+  }
 
   /**
    * Check if an integer falls within two end points on a circular ring
@@ -62,7 +89,7 @@ public class LeafSet {
    * @param b less clockwise item
    * @return true if {@code o} is between {@code a} and {@code b}
    */
-  protected boolean isBetween(int o, int a, int b) {
+  public boolean isBetween(int o, int a, int b) {
     return o > a ^ o < b ^ b < a;
   }
 
@@ -105,8 +132,8 @@ public class LeafSet {
    */
   public String toString() {
     return ( new StringBuilder( "Updated Leaf Set: { " ) )
-        .append( ccw.getIdentifier() ).append( " <- " )
-        .append( self.getIdentifier() ).append( " -> " )
+        .append( ccw.getIdentifier() ).append( " ccw <- " )
+        .append( self.getIdentifier() ).append( " -> cw " )
         .append( cw.getIdentifier() ).append( " }" ).toString();
   }
 

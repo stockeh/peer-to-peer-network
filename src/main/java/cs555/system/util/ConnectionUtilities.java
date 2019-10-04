@@ -5,7 +5,6 @@ import java.net.Socket;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.TimeUnit;
 import cs555.system.metadata.PeerInformation;
 import cs555.system.node.Node;
 import cs555.system.transport.TCPConnection;
@@ -87,16 +86,6 @@ public class ConnectionUtilities {
   public void closeCachedConnections() {
     synchronized ( temporaryConnections )
     {
-      try
-      {
-        TimeUnit.SECONDS.sleep( 1 );
-      } catch ( InterruptedException e )
-      {
-        LOG.error(
-            "Unable to sleep before sending clearing all cached connections. "
-                + e.getMessage() );
-        e.printStackTrace();
-      }
       temporaryConnections.forEach( (k, v) ->
       {
         v.close();

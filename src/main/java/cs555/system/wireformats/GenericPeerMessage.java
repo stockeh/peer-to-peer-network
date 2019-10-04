@@ -40,6 +40,18 @@ public class GenericPeerMessage implements Event {
     this.peer = peer;
     this.flag = flag;
   }
+  
+  /**
+   * Default constructor - create a new register or unregister message.
+   * 
+   * @param type Specified for use of register or unregister message.
+   * @param peer
+   */
+  public GenericPeerMessage(int type, PeerInformation peer) {
+    this.type = type;
+    this.peer = peer;
+    this.flag = false;
+  }
 
   /**
    * Constructor - Unmarshall the <code>byte[]</code> to the respective
