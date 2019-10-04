@@ -7,8 +7,8 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import cs555.system.metadata.PeerInformation;
 import cs555.system.util.Constants;
 import cs555.system.util.MessageUtilities;
@@ -24,9 +24,15 @@ public class JoinNetwork implements Event {
 
   private PeerInformation destination;
 
+  private PeerInformation cw;
+
+  private PeerInformation ccw;
+
   private PeerInformation[][] table;
 
-  private List<Short> networkTraceIndex;
+  private Set<String> networkTraceIdentifiers;
+
+  private short row;
 
   /**
    * Default constructor -
@@ -36,7 +42,8 @@ public class JoinNetwork implements Event {
     this.type = Protocol.JOIN_NETWORK_REQUEST;
     this.destination = destination;
     this.table = new PeerInformation[ Constants.NUMBER_OF_ROWS ][ 16 ];
-    this.networkTraceIndex = new ArrayList<>();
+    this.networkTraceIdentifiers = new LinkedHashSet<>();
+    this.row = 0;
   }
 
   /**
@@ -55,6 +62,12 @@ public class JoinNetwork implements Event {
     this.type = din.readInt();
 
     this.destination = MessageUtilities.readPeerInformation( din );
+
+    if ( din.readBoolean() )
+    {
+      cw = MessageUtilities.readPeerInformation( din );
+      ccw = MessageUtilities.readPeerInformation( din );
+    }
 
     this.table = new PeerInformation[ Constants.NUMBER_OF_ROWS ][ 16 ];
 
@@ -75,11 +88,18 @@ public class JoinNetwork implements Event {
     }
 
     short len = din.readShort();
-    this.networkTraceIndex = new ArrayList<>( len );
+    this.networkTraceIdentifiers = new LinkedHashSet<>( len );
+    int identifierLength;
+    byte[] identifier;
     for ( int i = 0; i < len; ++i )
     {
-      networkTraceIndex.add( din.readShort() );
+      identifierLength = din.readInt();
+      identifier = new byte[ identifierLength ];
+      din.readFully( identifier );
+      networkTraceIdentifiers.add( new String( identifier ) );
     }
+
+    this.row = din.readShort();
 
     inputStream.close();
     din.close();
@@ -97,24 +117,44 @@ public class JoinNetwork implements Event {
     return destination;
   }
 
+  public PeerInformation getCW() {
+    return cw;
+  }
+
+  public PeerInformation getCCW() {
+    return ccw;
+  }
+
   public PeerInformation[][] getTable() {
     return table;
   }
 
-  public List<Short> getNetworkTraceIndex() {
-    return networkTraceIndex;
+  public short getRow() {
+    return row;
   }
 
-  public int getRowIndex() {
-    return networkTraceIndex.size();
+  public void setCW(PeerInformation cw) {
+    this.cw = cw;
   }
 
-  public void addNetworkTraceRoute(int rowIndex) {
-    networkTraceIndex.add( ( short ) rowIndex );
+  public void setCCW(PeerInformation ccw) {
+    this.ccw = ccw;
   }
 
   public void setTableRow(PeerInformation[] row) {
-    table[ getRowIndex() ] = row;
+    table[ this.row ] = row;
+  }
+
+  public Set<String> getNetworkTraceIdentifiers() {
+    return networkTraceIdentifiers;
+  }
+
+  public void addNetworkTraceRoute(String s) {
+    networkTraceIdentifiers.add( s );
+  }
+
+  public void incrementRow() {
+    ++row;
   }
 
   /**
@@ -131,6 +171,15 @@ public class JoinNetwork implements Event {
 
     MessageUtilities.writePeerInformation( dout, destination );
 
+    if ( cw == null && ccw == null )
+    {
+      dout.writeBoolean( false );
+    } else
+    {
+      dout.writeBoolean( true );
+      MessageUtilities.writePeerInformation( dout, cw );
+      MessageUtilities.writePeerInformation( dout, ccw );
+    }
     for ( PeerInformation[] row : table )
     {
       if ( row == null )
@@ -153,12 +202,16 @@ public class JoinNetwork implements Event {
       }
     }
 
-    dout.writeShort( networkTraceIndex.size() );
+    dout.writeShort( networkTraceIdentifiers.size() );
 
-    for ( Short s : networkTraceIndex )
+    for ( String s : networkTraceIdentifiers )
     {
-      dout.writeShort( s );
+      byte[] identifierBytes = s.getBytes();
+      dout.writeInt( identifierBytes.length );
+      dout.write( identifierBytes );
     }
+
+    dout.writeShort( row );
 
     dout.flush();
     marshalledBytes = outputStream.toByteArray();
