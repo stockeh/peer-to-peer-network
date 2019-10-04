@@ -174,7 +174,7 @@ public class RoutingTable {
    */
   public void display() {
     String lineSeparator = new String( new char[ 113 ] ).replace( "\0", "-" );
-    System.out.println( "\n" + lineSeparator );
+    System.out.println( lineSeparator );
     StringBuilder sb = new StringBuilder();
     for ( int i = 0; i < Constants.NUMBER_OF_ROWS; i++ )
     {

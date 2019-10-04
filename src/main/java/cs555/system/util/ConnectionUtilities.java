@@ -17,8 +17,6 @@ import cs555.system.transport.TCPConnection;
  */
 public class ConnectionUtilities {
 
-  private static final Logger LOG = Logger.getInstance();
-
   private final Map<String, TCPConnection> temporaryConnections;
 
   private ExecutorService executorService;

@@ -138,8 +138,8 @@ public class DiscoverPeerRequest implements Event {
     int size = networkTraceIdentifiers.size();
     return ( new StringBuilder() )
         .append( Protocol.class.getFields()[ type ].getName().toString() )
-        .append( " | Routing Identifier: " )
+        .append( " | Content Identifier: " )
         .append( destination.getIdentifier() ).append( " | Hop: " )
-        .append( size + 1 ).toString();
+        .append( size - 1 ).append( " | Next Node: " ).toString();
   }
 }

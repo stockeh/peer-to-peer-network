@@ -225,8 +225,8 @@ public class JoinNetwork implements Event {
   public String toString() {
     return ( new StringBuilder() )
         .append( Protocol.class.getFields()[ type ].getName().toString() )
-        .append( " | " ).append( "Routing Identifier: " )
-        .append( destination.getIdentifier() ).toString();
+        .append( " | New Node: " ).append( destination.getIdentifier() )
+        .append( " | Hop: " ).append( networkTraceIdentifiers.size() - 1 )
+        .append( " | Next Node: " ).toString();
   }
-
 }
