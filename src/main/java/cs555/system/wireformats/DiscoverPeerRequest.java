@@ -30,9 +30,11 @@ public class DiscoverPeerRequest implements Event {
   /**
    * Default constructor -
    * 
+   * @param type
+   * @param destination
    */
-  public DiscoverPeerRequest(PeerInformation destination) {
-    this.type = Protocol.DISCOVER_PEER_REQUEST;
+  public DiscoverPeerRequest(int type, PeerInformation destination) {
+    this.type = type;
     this.row = 0;
     this.destination = destination;
     this.networkTraceIdentifiers = new ArrayList<>();
@@ -138,8 +140,8 @@ public class DiscoverPeerRequest implements Event {
     int size = networkTraceIdentifiers.size();
     return ( new StringBuilder() )
         .append( Protocol.class.getFields()[ type ].getName().toString() )
-        .append( " | Routing Identifier: " )
+        .append( " | Content Identifier: " )
         .append( destination.getIdentifier() ).append( " | Hop: " )
-        .append( size + 1 ).toString();
+        .append( size - 1 ).append( " | Next Node: " ).toString();
   }
 }

@@ -52,11 +52,11 @@ public class LeafSet {
       this.ccw = peer;
     }
   }
-  
+
   public PeerInformation getCW() {
     return cw;
   }
-  
+
   public PeerInformation getCCW() {
     return ccw;
   }
@@ -107,21 +107,28 @@ public class LeafSet {
    *         falls outside the leaf set boundaries.
    */
   public PeerInformation getClosestLeaf(PeerInformation other) {
-    int o = Integer.parseInt( other.getIdentifier(), 16 );
-    int s = Integer.parseInt( self.getIdentifier(), 16 );
-    int cw = Integer.parseInt( this.cw.getIdentifier(), 16 );
-    int ccw = Integer.parseInt( this.ccw.getIdentifier(), 16 );
 
-    if ( isBetween( o, cw, s ) )
+    if ( isPopulated() )
     {
-      int o_cw = ( cw - o ) & 0xFFFF;
-      int o_s = ( o - s ) & 0xFFFF;
-      return o_cw < o_s ? this.cw : self;
-    } else if ( isBetween( o, s, ccw ) )
+      int o = Integer.parseInt( other.getIdentifier(), 16 );
+      int s = Integer.parseInt( self.getIdentifier(), 16 );
+      int cw = Integer.parseInt( this.cw.getIdentifier(), 16 );
+      int ccw = Integer.parseInt( this.ccw.getIdentifier(), 16 );
+
+      if ( isBetween( o, cw, s ) )
+      {
+        int o_cw = ( cw - o ) & 0xFFFF;
+        int o_s = ( o - s ) & 0xFFFF;
+        return o_cw < o_s ? this.cw : self;
+      } else if ( isBetween( o, s, ccw ) )
+      {
+        int o_ccw = ( o - ccw ) & 0xFFFF;
+        int o_s = ( s - o ) & 0xFFFF;
+        return o_ccw < o_s ? this.ccw : self;
+      }
+    } else
     {
-      int o_ccw = ( o - ccw ) & 0xFFFF;
-      int o_s = ( s - o ) & 0xFFFF;
-      return o_ccw < o_s ? this.ccw : self;
+      return self;
     }
     return null;
   }

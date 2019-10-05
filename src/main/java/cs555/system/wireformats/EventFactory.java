@@ -71,6 +71,7 @@ public class EventFactory {
         return new JoinNetwork( marshalledBytes );
 
       case Protocol.DISCOVER_PEER_REQUEST :
+      case Protocol.VERIFY_APPLICAITON_LEAVES :
         return new DiscoverPeerRequest( marshalledBytes );
 
       case Protocol.STORE_DATA_REQUEST :
