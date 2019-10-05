@@ -3,7 +3,9 @@ package cs555.system.metadata;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -31,7 +33,7 @@ public class PeerMetadata {
 
   private boolean initialized;
 
-  private final List<String> files;
+  private final Map<String, String> files;
 
   /**
    * Default Constructor -
@@ -44,7 +46,7 @@ public class PeerMetadata {
     this.lock = new ReentrantLock();
     this.condition = lock.newCondition();
     this.initialized = false;
-    this.files = new ArrayList<>();
+    this.files = new HashMap<>();
   }
 
   /**
@@ -86,6 +88,14 @@ public class PeerMetadata {
    */
   public LeafSet leaf() {
     return leaf;
+  }
+
+  /**
+   * 
+   * @return
+   */
+  public Map<String, String> files() {
+    return files;
   }
 
   /**
@@ -160,10 +170,13 @@ public class PeerMetadata {
    * 
    * @param filename
    */
-  public synchronized void addFile(String filename) {
-    if ( !files.contains( filename ) )
+  public void addFile(String filename, String identifier) {
+    synchronized ( files )
     {
-      files.add( filename );
+      if ( !files.containsKey( filename ) )
+      {
+        files.put( filename, identifier );
+      }
     }
   }
 
@@ -172,19 +185,22 @@ public class PeerMetadata {
    * @return the {@code String} representation of the files stored on
    *         this peer, or an error message if none are.
    */
-  public synchronized String filesToString() {
+  public String filesToString() {
     StringBuilder sb = new StringBuilder();
-    if ( files.isEmpty() )
+    synchronized ( files )
     {
-      return sb.append( "There are no files stored on peer " )
-          .append( self.toString() ).toString();
+      if ( files.isEmpty() )
+      {
+        return sb.append( "There are NO files stored on peer " )
+            .append( self.toString() ).toString();
+      }
+      List<String> f = new ArrayList<>( files.keySet() );
+      f.sort( Comparator.comparing( String::length )
+          .thenComparing( Comparator.naturalOrder() ) );
+      sb.append( "Files stored on " ).append( self.toString() )
+          .append( " include: \n\n" );
+      f.forEach( v -> sb.append( "\t>\t" ).append( File.separator ).append( v ).append( "\n" ) );
+      return sb.toString();
     }
-    files.sort( Comparator.comparing( String::length )
-        .thenComparing( Comparator.naturalOrder() ) );
-    sb.append( "Files stored on " ).append( self.toString() )
-        .append( " include: \n\n" );
-    files
-        .forEach( v -> sb.append( File.separator ).append( v ).append( "\n" ) );
-    return sb.toString();
   }
 }

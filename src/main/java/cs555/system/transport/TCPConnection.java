@@ -79,8 +79,7 @@ public class TCPConnection {
       this.socket.close();
     } catch ( IOException e )
     {
-      LOG.error(
-          "Unable to close the connection with node. " + e.getMessage() );
+      LOG.error( "Unable to close the connection with node. " + e.toString() );
       e.printStackTrace();
     }
   }
