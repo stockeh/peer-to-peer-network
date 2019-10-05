@@ -36,4 +36,6 @@ public interface Protocol {
   final int READ_DATA_REQUEST = 12;
 
   final int READ_DATA_RESPONSE = 13;
+  
+  final int VERIFY_APPLICAITON_LEAVES = 14;
 }

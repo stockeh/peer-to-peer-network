@@ -419,8 +419,9 @@ public class Store implements Node {
     {
       ConnectionUtilities
           .establishConnection( this, source.getHost(), source.getPort() )
-          .getTCPSender().sendData(
-              ( new DiscoverPeerRequest( metadata.item() ) ).getBytes() );
+          .getTCPSender()
+          .sendData( ( new DiscoverPeerRequest( Protocol.DISCOVER_PEER_REQUEST,
+              metadata.item() ) ).getBytes() );
     } catch ( IOException e )
     {
       LOG.error(

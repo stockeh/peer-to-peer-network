@@ -30,9 +30,11 @@ public class DiscoverPeerRequest implements Event {
   /**
    * Default constructor -
    * 
+   * @param type
+   * @param destination
    */
-  public DiscoverPeerRequest(PeerInformation destination) {
-    this.type = Protocol.DISCOVER_PEER_REQUEST;
+  public DiscoverPeerRequest(int type, PeerInformation destination) {
+    this.type = type;
     this.row = 0;
     this.destination = destination;
     this.networkTraceIdentifiers = new ArrayList<>();

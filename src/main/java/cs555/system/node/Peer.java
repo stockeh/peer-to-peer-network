@@ -50,7 +50,9 @@ public class Peer implements Node {
 
   private static final String DISPLAY_DHT = "display-dht";
 
-  private static final String DISPLAY_LEAF = "display-leaf";
+  private static final String DISPLAY_LEAFSET = "display-leafset";
+
+  private static final String VERIFY_LEAFSET = "verify-leafset";
 
   private static final String EXIT = "exit";
 
@@ -164,8 +166,12 @@ public class Peer implements Node {
           LOG.info( metadata.leaf().toString() );
           break;
 
-        case DISPLAY_LEAF :
+        case DISPLAY_LEAFSET :
           metadata.table().display();
+          break;
+
+        case VERIFY_LEAFSET :
+          verifyApplicationLeafSet( null, null );
           break;
 
         case EXIT :
@@ -232,6 +238,66 @@ public class Peer implements Node {
 
       case Protocol.READ_DATA_REQUEST :
         read( event, connection );
+        break;
+
+      case Protocol.VERIFY_APPLICAITON_LEAVES :
+        connection.close();
+        verifyApplicationLeafSet( ( DiscoverPeerRequest ) event, connection );
+        break;
+    }
+  }
+
+  /**
+   * Send requests in the clockwise and counter-clockwise direction and
+   * print the trace to verify correctness of the leaf set.
+   * 
+   * @param connection
+   * @param request
+   * 
+   */
+  private void verifyApplicationLeafSet(DiscoverPeerRequest request,
+      TCPConnection connection) {
+    if ( metadata.leaf().isPopulated() )
+    {
+      try
+      {
+        if ( request == null )
+        {
+          DiscoverPeerRequest data = new DiscoverPeerRequest(
+              Protocol.VERIFY_APPLICAITON_LEAVES, metadata.self() );
+          data.addNetworkTraceRoute( metadata.self().getIdentifier() );
+          ConnectionUtilities
+              .establishConnection( this, metadata.leaf().getCW().getHost(),
+                  metadata.leaf().getCW().getPort() )
+              .getTCPSender().sendData( ( data.getBytes() ) );
+        } else if ( !request.getDestination().equals( metadata.self() ) )
+        {
+          request.addNetworkTraceRoute( metadata.self().getIdentifier() );
+          ConnectionUtilities
+              .establishConnection( this, metadata.leaf().getCW().getHost(),
+                  metadata.leaf().getCW().getPort() )
+              .getTCPSender().sendData( request.getBytes() );
+        } else
+        {
+          request.addNetworkTraceRoute( metadata.self().getIdentifier() );
+          StringBuilder sb =
+              new StringBuilder( "Clockwise Network Route Trace:" );
+          for ( String s : request.getNetworkTraceIdentifiers() )
+          {
+            sb.append( " -> " ).append( s );
+          }
+          LOG.info( sb.toString() );
+        }
+      } catch ( IOException e )
+      {
+        LOG.error( "Unable to send message to peer. " + e.getMessage() );
+        e.printStackTrace();
+      }
+    } else
+    {
+      LOG.info(
+          "Leaf set has not been established for peer yet. Please add another"
+              + " peer to the network." );
     }
   }
 
@@ -730,9 +796,13 @@ public class Peer implements Node {
     sb.append( "\n\t" ).append( DISPLAY_DHT )
         .append( "\t: display the routing DHT.\n" );
 
-    sb.append( "\n\t" ).append( DISPLAY_LEAF )
+    sb.append( "\n\t" ).append( DISPLAY_LEAFSET )
         .append( "\t: display the leaf nodes as " )
         .append( "{ clockwise, this, counter-clockwise }.\n" );
+
+    sb.append( "\n\t" ).append( VERIFY_LEAFSET )
+        .append( "\t: route a request in the clockwise and " )
+        .append( "clounter-clockwise directions for correctness.\n" );
 
     sb.append( "\n\t" ).append( EXIT )
         .append( "\t\t: gracefully leave the network and distribute stored " )
