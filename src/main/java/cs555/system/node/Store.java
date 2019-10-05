@@ -84,7 +84,7 @@ public class Store implements Node {
     } catch ( IOException e )
     {
       LOG.error(
-          "Unable to successfully start peer. Exiting. " + e.getMessage() );
+          "Unable to successfully start peer. Exiting. " + e.toString() );
       System.exit( 1 );
     }
   }
@@ -144,9 +144,10 @@ public class Store implements Node {
       String identifier = input[ 1 ];
       LOG.info(
           "Data Has Identifier: " + identifier + ", based off being fake." );
+      metadata.setDataTransferType( StoreMetadata.WRITE );
       metadata.item().setIdentifier( identifier );
       metadata.setLocalPath( Paths.get( "data/greta.jpeg" ) );
-      metadata.setFileSystemPath( "greta.jpeg" );
+      metadata.setFileSystemPath( "greta.jpeg" + "\t" + identifier );
       try
       {
         TCPConnection connection = ConnectionUtilities.establishConnection(
@@ -157,7 +158,7 @@ public class Store implements Node {
                 .getBytes() );
       } catch ( IOException e )
       {
-        LOG.error( "Unable to send message to Discovery. " + e.getMessage() );
+        LOG.error( "Unable to send message to Discovery. " + e.toString() );
         e.printStackTrace();
       }
     } else
@@ -231,6 +232,7 @@ public class Store implements Node {
     {
       metadata.setDataTransferType( StoreMetadata.WRITE );
       Path localPath = Paths.get( input[ 1 ] );
+
       String fileSystemPath = input[ 2 ].endsWith( File.separator ) ? input[ 2 ]
           : input[ 2 ] + File.separator;
       fileSystemPath += localPath.getFileName().toString();
@@ -259,7 +261,7 @@ public class Store implements Node {
         + fileSystemPath );
     metadata.item().setIdentifier( identifier );
     metadata.setLocalPath( localPath );
-    metadata.setFileSystemPath( fileSystemPath );
+    metadata.setFileSystemPath( fileSystemPath + "\t" + identifier );
     try
     {
       TCPConnection connection = ConnectionUtilities.establishConnection( this,
@@ -269,7 +271,7 @@ public class Store implements Node {
           ( new GenericMessage( Protocol.DISCOVER_NODE_REQUEST ) ).getBytes() );
     } catch ( IOException e )
     {
-      LOG.error( "Unable to send message to Discovery. " + e.getMessage() );
+      LOG.error( "Unable to send message to Discovery. " + e.toString() );
       e.printStackTrace();
     }
   }
@@ -316,8 +318,7 @@ public class Store implements Node {
     StringBuilder sb =
         ( new StringBuilder() ).append( "The read request from peer ( " )
             .append( response.getDescriptor() ).append( ") for " )
-            .append( metadata.getFileSystemPath() ).append( " | " )
-            .append( metadata.item().getIdentifier() ).append( " was " );
+            .append( metadata.getFileSystemPath() ).append( " was " );
     if ( data == null )
     {
       sb.append( "NOT successful!" );
@@ -333,7 +334,7 @@ public class Store implements Node {
         LOG.info( "Finished writing " + fs + " to disk." );
       } catch ( IOException e )
       {
-        LOG.error( "Unable to save " + fs + " to disk. " + e.getMessage() );
+        LOG.error( "Unable to save " + fs + " to disk. " + e.toString() );
         e.printStackTrace();
       }
     }
@@ -354,8 +355,7 @@ public class Store implements Node {
     StringBuilder sb =
         ( new StringBuilder() ).append( "The write request to peer ( " )
             .append( response.getPeer().toString() ).append( ") for " )
-            .append( metadata.getFileSystemPath() ).append( " | " )
-            .append( metadata.item().getIdentifier() ).append( " was " );
+            .append( metadata.getFileSystemPath() ).append( " was " );
     if ( response.getFlag() == Constants.FAILURE )
     {
       sb.append( "NOT " );
@@ -387,6 +387,7 @@ public class Store implements Node {
       if ( metadata.getDataTransferType() == StoreMetadata.WRITE )
       {
         content = Files.readAllBytes( metadata.getLocalPath() );
+        LOG.debug( "File System Path: " + metadata.getFileSystemPath() );
         connection.getTCPSender()
             .sendData( ( new DataTransfer( Protocol.STORE_DATA_REQUEST, content,
                 metadata.getFileSystemPath() ) ).getBytes() );
@@ -398,8 +399,9 @@ public class Store implements Node {
       }
     } catch ( IOException e )
     {
-      LOG.error( "Unable to upload file. " + e.getMessage() );
-      e.printStackTrace();
+      LOG.error( "Unable to upload file " + e.toString() );
+      connection.close();
+      metadata.reset();
     }
   }
 
@@ -425,7 +427,7 @@ public class Store implements Node {
     } catch ( IOException e )
     {
       LOG.error(
-          "Unable to send message to the source node. " + e.getMessage() );
+          "Unable to send message to the source node. " + e.toString() );
       e.printStackTrace();
     }
   }

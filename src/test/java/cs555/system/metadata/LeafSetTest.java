@@ -33,7 +33,7 @@ public class LeafSetTest {
 
   @Test
   public void testGetClosest() {
-    PeerInformation other, self;
+    PeerInformation self;
 
     self = new PeerInformation( "5555", null, 0 );
     LeafSet set = new LeafSet( self );
@@ -44,18 +44,12 @@ public class LeafSetTest {
     PeerInformation ccw = new PeerInformation( "3333", null, 0 );
     set.setLeaf( ccw, false );
 
-    other = new PeerInformation( "7777", null, 0 );
-    assertTrue( set.getClosestLeaf( other ).equals( self ) );
-    other = new PeerInformation( "4444", null, 0 );
-    assertTrue( set.getClosestLeaf( other ).equals( self ) );
-    other = new PeerInformation( "1111", null, 0 );
-    assertTrue( set.getClosestLeaf( other ).equals( cw ) );
-    other = new PeerInformation( "FFFF", null, 0 );
-    assertTrue( set.getClosestLeaf( other ).equals( cw ) );
-    other = new PeerInformation( "3333", null, 0 );
-    assertTrue( set.getClosestLeaf( other ).equals( ccw ) );
-    other = new PeerInformation( "2222", null, 0 );
-    assertTrue( set.getClosestLeaf( other ) == null );
+    assertTrue( set.getClosestLeaf( "7777" ).equals( self ) );
+    assertTrue( set.getClosestLeaf( "4444" ).equals( self ) );
+    assertTrue( set.getClosestLeaf( "1111" ).equals( cw ) );
+    assertTrue( set.getClosestLeaf( "FFFF" ).equals( cw ) );
+    assertTrue( set.getClosestLeaf( "3333" ).equals( ccw ) );
+    assertTrue( set.getClosestLeaf( "2222" ) == null );
 
     /** -------------------------------------- */
 
@@ -68,20 +62,13 @@ public class LeafSetTest {
     ccw = new PeerInformation( "BBBB", null, 0 );
     set.setLeaf( ccw, false );
 
-    other = new PeerInformation( "6666", null, 0 );
-    assertTrue( set.getClosestLeaf( other ).equals( self ) );
-    other = new PeerInformation( "BBBB", null, 0 );
-    assertTrue( set.getClosestLeaf( other ).equals( ccw ) );
-    other = new PeerInformation( "7777", null, 0 );
-    assertTrue( set.getClosestLeaf( other ).equals( cw ) );
-    other = new PeerInformation( "1111", null, 0 );
-    assertTrue( set.getClosestLeaf( other ).equals( self ) );
-    other = new PeerInformation( "CCCC", null, 0 );
-    assertTrue( set.getClosestLeaf( other ).equals( ccw ) );
-    other = new PeerInformation( "9999", null, 0 );
-    assertTrue( set.getClosestLeaf( other ) == null );
-    other = new PeerInformation( "AAAA", null, 0 );
-    assertTrue( set.getClosestLeaf( other ) == null );
+    assertTrue( set.getClosestLeaf( "6666" ).equals( self ) );
+    assertTrue( set.getClosestLeaf( "BBBB" ).equals( ccw ) );
+    assertTrue( set.getClosestLeaf( "7777" ).equals( cw ) );
+    assertTrue( set.getClosestLeaf( "1111" ).equals( self ) );
+    assertTrue( set.getClosestLeaf( "CCCC" ).equals( ccw ) );
+    assertTrue( set.getClosestLeaf( "9999" ) == null );
+    assertTrue( set.getClosestLeaf( "AAAA" ) == null );
 
     /** -------------------------------------- */
 
@@ -94,22 +81,14 @@ public class LeafSetTest {
     ccw = new PeerInformation( "AAAA", null, 0 );
     set.setLeaf( ccw, false );
 
-    other = new PeerInformation( "0000", null, 0 );
-    assertTrue( set.getClosestLeaf( other ).equals( self ) );
-    other = new PeerInformation( "FFFF", null, 0 );
-    assertTrue( set.getClosestLeaf( other ).equals( self ) );
-    other = new PeerInformation( "AAAB", null, 0 );
-    assertTrue( set.getClosestLeaf( other ).equals( ccw ) );
-    other = new PeerInformation( "4444", null, 0 );
-    assertTrue( set.getClosestLeaf( other ).equals( cw ) );
-    other = new PeerInformation( "5555", null, 0 );
-    assertTrue( set.getClosestLeaf( other ).equals( cw ) );
-    other = new PeerInformation( "1111", null, 0 );
-    assertTrue( set.getClosestLeaf( other ).equals( self ) );
-    other = new PeerInformation( "AAA9", null, 0 );
-    assertTrue( set.getClosestLeaf( other ) == null );
-    other = new PeerInformation( "6666", null, 0 );
-    assertTrue( set.getClosestLeaf( other ) == null );
+    assertTrue( set.getClosestLeaf( "0000" ).equals( self ) );
+    assertTrue( set.getClosestLeaf( "FFFF" ).equals( self ) );
+    assertTrue( set.getClosestLeaf( "AAAB" ).equals( ccw ) );
+    assertTrue( set.getClosestLeaf( "4444" ).equals( cw ) );
+    assertTrue( set.getClosestLeaf( "5555" ).equals( cw ) );
+    assertTrue( set.getClosestLeaf( "1111" ).equals( self ) );
+    assertTrue( set.getClosestLeaf( "AAA9" ) == null );
+    assertTrue( set.getClosestLeaf( "6666" ) == null );
 
     /** -------------------------------------- */
 
@@ -122,22 +101,14 @@ public class LeafSetTest {
     ccw = new PeerInformation( "AAAA", null, 0 );
     set.setLeaf( ccw, false );
 
-    other = new PeerInformation( "0000", null, 0 );
-    assertTrue( set.getClosestLeaf( other ).equals( self ) );
-    other = new PeerInformation( "FFFE", null, 0 );
-    assertTrue( set.getClosestLeaf( other ).equals( self ) );
-    other = new PeerInformation( "AAAB", null, 0 );
-    assertTrue( set.getClosestLeaf( other ).equals( ccw ) );
-    other = new PeerInformation( "4444", null, 0 );
-    assertTrue( set.getClosestLeaf( other ).equals( cw ) );
-    other = new PeerInformation( "5555", null, 0 );
-    assertTrue( set.getClosestLeaf( other ).equals( cw ) );
-    other = new PeerInformation( "1111", null, 0 );
-    assertTrue( set.getClosestLeaf( other ).equals( self ) );
-    other = new PeerInformation( "AAA9", null, 0 );
-    assertTrue( set.getClosestLeaf( other ) == null );
-    other = new PeerInformation( "6666", null, 0 );
-    assertTrue( set.getClosestLeaf( other ) == null );
+    assertTrue( set.getClosestLeaf( "0000" ).equals( self ) );
+    assertTrue( set.getClosestLeaf( "FFFE" ).equals( self ) );
+    assertTrue( set.getClosestLeaf( "AAAB" ).equals( ccw ) );
+    assertTrue( set.getClosestLeaf( "4444" ).equals( cw ) );
+    assertTrue( set.getClosestLeaf( "5555" ).equals( cw ) );
+    assertTrue( set.getClosestLeaf( "1111" ).equals( self ) );
+    assertTrue( set.getClosestLeaf( "AAA9" ) == null );
+    assertTrue( set.getClosestLeaf( "6666" ) == null );
 
     /** -------------------------------------- */
 
@@ -150,20 +121,13 @@ public class LeafSetTest {
     ccw = new PeerInformation( "3333", null, 0 );
     set.setLeaf( ccw, false );
 
-    other = new PeerInformation( "FFFE", null, 0 );
-    assertTrue( set.getClosestLeaf( other ).equals( cw ) );
-    other = new PeerInformation( "FF00", null, 0 );
-    assertTrue( set.getClosestLeaf( other ).equals( cw ) );
-    other = new PeerInformation( "5500", null, 0 );
-    assertTrue( set.getClosestLeaf( other ).equals( self ) );
-    other = new PeerInformation( "5555", null, 0 );
-    assertTrue( set.getClosestLeaf( other ).equals( self ) );
-    other = new PeerInformation( "3334", null, 0 );
-    assertTrue( set.getClosestLeaf( other ).equals( ccw ) );
-    other = new PeerInformation( "3300", null, 0 );
-    assertTrue( set.getClosestLeaf( other ) == null );
-    other = new PeerInformation( "0000", null, 0 );
-    assertTrue( set.getClosestLeaf( other ) == null );
+    assertTrue( set.getClosestLeaf( "FFFE" ).equals( cw ) );
+    assertTrue( set.getClosestLeaf( "FF00" ).equals( cw ) );
+    assertTrue( set.getClosestLeaf( "5500" ).equals( self ) );
+    assertTrue( set.getClosestLeaf( "5555" ).equals( self ) );
+    assertTrue( set.getClosestLeaf( "3334" ).equals( ccw ) );
+    assertTrue( set.getClosestLeaf( "3300" ) == null );
+    assertTrue( set.getClosestLeaf( "0000" ) == null );
 
     /** -------------------------------------- */
 
@@ -176,20 +140,13 @@ public class LeafSetTest {
     ccw = new PeerInformation( "3333", null, 0 );
     set.setLeaf( ccw, false );
 
-    other = new PeerInformation( "FFFE", null, 0 );
-    assertTrue( set.getClosestLeaf( other ).equals( cw ) );
-    other = new PeerInformation( "FF00", null, 0 );
-    assertTrue( set.getClosestLeaf( other ).equals( cw ) );
-    other = new PeerInformation( "5500", null, 0 );
-    assertTrue( set.getClosestLeaf( other ).equals( self ) );
-    other = new PeerInformation( "5555", null, 0 );
-    assertTrue( set.getClosestLeaf( other ).equals( self ) );
-    other = new PeerInformation( "3334", null, 0 );
-    assertTrue( set.getClosestLeaf( other ).equals( ccw ) );
-    other = new PeerInformation( "3300", null, 0 );
-    assertTrue( set.getClosestLeaf( other ) == null );
-    other = new PeerInformation( "0001", null, 0 );
-    assertTrue( set.getClosestLeaf( other ) == null );
+    assertTrue( set.getClosestLeaf( "FFFE" ).equals( cw ) );
+    assertTrue( set.getClosestLeaf( "FF00" ).equals( cw ) );
+    assertTrue( set.getClosestLeaf( "5500" ).equals( self ) );
+    assertTrue( set.getClosestLeaf( "5555" ).equals( self ) );
+    assertTrue( set.getClosestLeaf( "3334" ).equals( ccw ) );
+    assertTrue( set.getClosestLeaf( "3300" ) == null );
+    assertTrue( set.getClosestLeaf( "0001" ) == null );
 
     /** -------------------------------------- */
 
@@ -202,18 +159,12 @@ public class LeafSetTest {
     ccw = new PeerInformation( "FFFF", null, 0 );
     set.setLeaf( ccw, false );
 
-    other = new PeerInformation( "0000", null, 0 );
-    assertTrue( set.getClosestLeaf( other ).equals( ccw ) );
-    other = new PeerInformation( "5500", null, 0 );
-    assertTrue( set.getClosestLeaf( other ).equals( self ) );
-    other = new PeerInformation( "5555", null, 0 );
-    assertTrue( set.getClosestLeaf( other ).equals( self ) );
-    other = new PeerInformation( "AAA0", null, 0 );
-    assertTrue( set.getClosestLeaf( other ).equals( cw ) );
-    other = new PeerInformation( "AAAB", null, 0 );
-    assertTrue( set.getClosestLeaf( other ) == null );
-    other = new PeerInformation( "FFFE", null, 0 );
-    assertTrue( set.getClosestLeaf( other ) == null );
+    assertTrue( set.getClosestLeaf( "0000" ).equals( ccw ) );
+    assertTrue( set.getClosestLeaf( "5500" ).equals( self ) );
+    assertTrue( set.getClosestLeaf( "5555" ).equals( self ) );
+    assertTrue( set.getClosestLeaf( "AAA0" ).equals( cw ) );
+    assertTrue( set.getClosestLeaf( "AAAB" ) == null );
+    assertTrue( set.getClosestLeaf( "FFFE" ) == null );
 
     /** -------------------------------------- */
 
@@ -226,17 +177,11 @@ public class LeafSetTest {
     ccw = new PeerInformation( "0000", null, 0 );
     set.setLeaf( ccw, false );
 
-    other = new PeerInformation( "0001", null, 0 );
-    assertTrue( set.getClosestLeaf( other ).equals( ccw ) );
-    other = new PeerInformation( "5500", null, 0 );
-    assertTrue( set.getClosestLeaf( other ).equals( self ) );
-    other = new PeerInformation( "5555", null, 0 );
-    assertTrue( set.getClosestLeaf( other ).equals( self ) );
-    other = new PeerInformation( "AAA0", null, 0 );
-    assertTrue( set.getClosestLeaf( other ).equals( cw ) );
-    other = new PeerInformation( "AAAB", null, 0 );
-    assertTrue( set.getClosestLeaf( other ) == null );
-    other = new PeerInformation( "FFFF", null, 0 );
-    assertTrue( set.getClosestLeaf( other ) == null );
+    assertTrue( set.getClosestLeaf( "0001" ).equals( ccw ) );
+    assertTrue( set.getClosestLeaf( "5500" ).equals( self ) );
+    assertTrue( set.getClosestLeaf( "5555" ).equals( self ) );
+    assertTrue( set.getClosestLeaf( "AAA0" ).equals( cw ) );
+    assertTrue( set.getClosestLeaf( "AAAB" ) == null );
+    assertTrue( set.getClosestLeaf( "FFFF" ) == null );
   }
 }

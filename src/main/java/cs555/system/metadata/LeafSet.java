@@ -101,16 +101,16 @@ public class LeafSet {
    * <b>IMPORTANT:</b> assumes each of the peer identifiers are 16-bits.
    * </p>
    *
-   * @param other peer to check if within bounds
+   * @param other peer identifier to check if within bounds
    * @return the {@code Leaf} that is closest by identifier to
    *         {@code other}, <b>or</b> {@code null} if {@code other}
    *         falls outside the leaf set boundaries.
    */
-  public PeerInformation getClosestLeaf(PeerInformation other) {
+  public PeerInformation getClosestLeaf(String otherIdentifier) {
 
     if ( isPopulated() )
     {
-      int o = Integer.parseInt( other.getIdentifier(), 16 );
+      int o = Integer.parseInt( otherIdentifier, 16 );
       int s = Integer.parseInt( self.getIdentifier(), 16 );
       int cw = Integer.parseInt( this.cw.getIdentifier(), 16 );
       int ccw = Integer.parseInt( this.ccw.getIdentifier(), 16 );

@@ -9,6 +9,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Date;
 import java.util.HashSet;
+import java.util.Map.Entry;
 import java.util.Scanner;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
@@ -100,7 +101,7 @@ public class Peer implements Node {
     } catch ( IOException e )
     {
       LOG.error(
-          "Unable to successfully start peer. Exiting. " + e.getMessage() );
+          "Unable to successfully start peer. Exiting. " + e.toString() );
       System.exit( 1 );
     }
   }
@@ -211,7 +212,7 @@ public class Peer implements Node {
           discoverConnection( new String[ 0 ], connection );
         } catch ( IOException e )
         {
-          LOG.info( "Unable to discover a new connection. " + e.getMessage() );
+          LOG.info( "Unable to discover a new connection. " + e.toString() );
           e.printStackTrace();
         }
         break;
@@ -226,6 +227,10 @@ public class Peer implements Node {
 
       case Protocol.FORWARD_LEAF_IDENTIFIER :
         updateLeafSet( event );
+        break;
+
+      case Protocol.STORE_DATA_RESPONSE :
+        migrationResponse( event, connection );
         break;
 
       case Protocol.DISCOVER_PEER_REQUEST :
@@ -245,6 +250,28 @@ public class Peer implements Node {
         verifyApplicationLeafSet( ( DiscoverPeerRequest ) event, connection );
         break;
     }
+  }
+
+  /**
+   * Process the response message from the peer regarding the status of
+   * the migrations operation.
+   * 
+   * @param event
+   * @param connection
+   */
+  private void migrationResponse(Event event, TCPConnection connection) {
+    connection.close();
+    GenericPeerMessage response = ( GenericPeerMessage ) event;
+
+    StringBuilder sb =
+        ( new StringBuilder() ).append( "The file migration to peer ( " )
+            .append( response.getPeer().toString() ).append( ") was " );
+    if ( response.getFlag() == Constants.FAILURE )
+    {
+      sb.append( "NOT " );
+    }
+    sb.append( "successful!" );
+    LOG.info( sb.toString() );
   }
 
   /**
@@ -290,7 +317,7 @@ public class Peer implements Node {
         }
       } catch ( IOException e )
       {
-        LOG.error( "Unable to send message to peer. " + e.getMessage() );
+        LOG.error( "Unable to send message to peer. " + e.toString() );
         e.printStackTrace();
       }
     } else
@@ -315,8 +342,8 @@ public class Peer implements Node {
   private void read(Event event, TCPConnection connection) {
     GenericMessage request = ( GenericMessage ) event;
 
-    String fileSystemPath =
-        request.getMessage() + "-" + metadata.self().getConnection();
+    String fileSystemPath = request.getMessage().split( "\t" )[ 0 ] + "-"
+        + metadata.self().getConnection();
     Path path =
         Paths.get( File.separator, "tmp", "stock", "pastry", fileSystemPath );
     byte[] data = null;
@@ -326,7 +353,7 @@ public class Peer implements Node {
     } catch ( IOException e )
     {
       LOG.error( "Unable to read " + fileSystemPath + " from disk. "
-          + e.getMessage() );
+          + e.toString() );
       e.printStackTrace();
     }
     try
@@ -336,7 +363,7 @@ public class Peer implements Node {
               metadata.self().toString() ) ).getBytes() );
     } catch ( IOException e )
     {
-      LOG.error( "Unable to send message to store. " + e.getMessage() );
+      LOG.error( "Unable to send message to store. " + e.toString() );
       e.printStackTrace();
     }
   }
@@ -355,9 +382,10 @@ public class Peer implements Node {
    */
   private void write(Event event, TCPConnection connection) {
     DataTransfer request = ( DataTransfer ) event;
-    metadata.addFile( request.getDescriptor() );
+    String[] descriptor = request.getDescriptor().split( "\t" );
+    metadata.addFile( descriptor[ 0 ], descriptor[ 1 ] );
     String fileSystemPath =
-        request.getDescriptor() + "-" + metadata.self().getConnection();
+        descriptor[ 0 ] + "-" + metadata.self().getConnection();
     Path path =
         Paths.get( File.separator, "tmp", "stock", "pastry", fileSystemPath );
     boolean success = Constants.SUCCESS;
@@ -369,7 +397,7 @@ public class Peer implements Node {
     } catch ( IOException e )
     {
       LOG.error(
-          "Unable to save " + fileSystemPath + " to disk. " + e.getMessage() );
+          "Unable to save " + fileSystemPath + " to disk. " + e.toString() );
       e.printStackTrace();
       success = Constants.FAILURE;
     }
@@ -380,7 +408,7 @@ public class Peer implements Node {
               metadata.self(), success ) ).getBytes() );
     } catch ( IOException e )
     {
-      LOG.error( "Unable to send message to store. " + e.getMessage() );
+      LOG.error( "Unable to send message to store. " + e.toString() );
       e.printStackTrace();
     }
   }
@@ -402,8 +430,8 @@ public class Peer implements Node {
     DiscoverPeerRequest request = ( DiscoverPeerRequest ) event;
     request.addNetworkTraceRoute( metadata.self().getIdentifier() );
     String next = "";
-    PeerInformation closest =
-        metadata.leaf().getClosestLeaf( request.getDestination() );
+    PeerInformation closest = metadata.leaf()
+        .getClosestLeaf( request.getDestination().getIdentifier() );
     try
     {
       if ( closest != null )
@@ -432,7 +460,7 @@ public class Peer implements Node {
       LOG.info( request.toString() + next );
     } catch ( IOException e )
     {
-      LOG.error( "Unable to send message. " + e.getMessage() );
+      LOG.error( "Unable to send message. " + e.toString() );
       e.printStackTrace();
     }
   }
@@ -495,6 +523,57 @@ public class Peer implements Node {
     if ( metadata.leaf().isPopulated() )
     {
       LOG.info( metadata.leaf().toString() );
+      synchronized ( metadata.files() )
+      {
+        metadata.files().entrySet()
+            .removeIf( entry -> migrateData( entry, request.getPeer() ) );
+      }
+    }
+  }
+
+  /**
+   * Migrate data from this node to the newly added neighbor, which is
+   * the same as the connection who just joined.
+   * 
+   * @param entry key/value pair as fileSystemPath/fileIdentifier
+   * @param peerInformation
+   * @return true if a file has to be migrated, false otherwise
+   */
+  private boolean migrateData(Entry<String, String> entry,
+      PeerInformation leaf) {
+    String k = entry.getKey(), v = entry.getValue();
+    PeerInformation closest = metadata.leaf().getClosestLeaf( v );
+    if ( closest == null || closest.equals( leaf ) )
+    {
+      String fileSystemPath = k + "-" + metadata.self().getConnection();
+      Path path =
+          Paths.get( File.separator, "tmp", "stock", "pastry", fileSystemPath );
+      byte[] data = null;
+      try
+      {
+        data = Files.readAllBytes( path );
+        TCPConnection connection = ConnectionUtilities
+            .establishConnection( this, leaf.getHost(), leaf.getPort() );
+        connection.submitTo( executorService );
+        connection.getTCPSender()
+            .sendData( ( new DataTransfer( Protocol.STORE_DATA_REQUEST, data,
+                k + "\t" + v ) ).getBytes() );
+        LOG.info( ( new StringBuilder() ).append( "The file " )
+            .append( File.separator ).append( k )
+            .append( " is being migrated to " ).append( leaf.toString() )
+            .toString() );
+        Files.delete( path );
+      } catch ( IOException e )
+      {
+        LOG.error(
+            "Unable to migrate " + fileSystemPath + ", " + e.toString() );
+        e.printStackTrace();
+        return false;
+      }
+      return true;
+    } else
+    {
+      return false;
     }
   }
 
@@ -678,7 +757,7 @@ public class Peer implements Node {
     } catch ( IOException e )
     {
       LOG.error(
-          "Unable to send leaf set request to peers. " + e.getMessage() );
+          "Unable to send leaf set request to peers. " + e.toString() );
       e.printStackTrace();
     }
     LOG.info( metadata.leaf().toString() );
@@ -711,7 +790,7 @@ public class Peer implements Node {
     } catch ( IOException e )
     {
       LOG.error( "Unable to send create output stream for message. "
-          + e.getMessage() );
+          + e.toString() );
       e.printStackTrace();
       return;
     }
@@ -730,7 +809,7 @@ public class Peer implements Node {
             } catch ( NumberFormatException | IOException e )
             {
               LOG.error(
-                  "Unable to send message to source node. " + e.getMessage() );
+                  "Unable to send message to source node. " + e.toString() );
               e.printStackTrace();
             }
             processed.add( peer );
@@ -776,7 +855,7 @@ public class Peer implements Node {
             .sendData( ( new JoinNetwork( metadata.self() ) ).getBytes() );
       } catch ( IOException e )
       {
-        LOG.error( "Unable to send message to source node. " + e.getMessage() );
+        LOG.error( "Unable to send message to source node. " + e.toString() );
         e.printStackTrace();
       }
     }

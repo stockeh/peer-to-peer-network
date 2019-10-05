@@ -61,7 +61,7 @@ public class TCPServerThread implements Runnable {
             .submitTo( executorService );
       } catch ( IOException e )
       {
-        LOG.debug( "Closing Server Socket Connection... " + e.getMessage() );
+        LOG.debug( "Closing Server Socket Connection... " + e.toString() );
         break;
       }
     }

@@ -26,10 +26,10 @@ public class DataTransfer implements Event {
    * Default constructor -
    * 
    */
-  public DataTransfer(int type, byte[] data, String fileSystemPath) {
+  public DataTransfer(int type, byte[] data, String descriptor) {
     this.type = type;
     this.data = data;
-    this.descriptor = fileSystemPath;
+    this.descriptor = descriptor;
   }
 
   /**

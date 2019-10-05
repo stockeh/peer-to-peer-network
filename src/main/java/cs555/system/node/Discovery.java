@@ -78,7 +78,7 @@ public class Discovery implements Node {
     } catch ( IOException e )
     {
       LOG.error( "Unable to successfully start discovery. Exiting. "
-          + e.getMessage() );
+          + e.toString() );
       System.exit( 1 );
     }
   }
@@ -164,7 +164,7 @@ public class Discovery implements Node {
       } catch ( IOException e )
       {
         LOG.error(
-            "Unable to send response message to peer. " + e.getMessage() );
+            "Unable to send response message to peer. " + e.toString() );
         e.printStackTrace();
       }
     } else
@@ -200,7 +200,7 @@ public class Discovery implements Node {
       connection.getTCPSender().sendData( response.getBytes() );
     } catch ( IOException e )
     {
-      LOG.error( "Unable to send response message to node. " + e.getMessage() );
+      LOG.error( "Unable to send response message to node. " + e.toString() );
       e.printStackTrace();
     }
   }
