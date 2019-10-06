@@ -158,11 +158,11 @@ public class Peer implements Node {
           break;
 
         case DISPLAY_DHT :
-          LOG.info( metadata.leaf().toString() );
+          metadata.table().display();
           break;
 
         case DISPLAY_LEAFSET :
-          metadata.table().display();
+          LOG.info( metadata.leaf().toString() );
           break;
 
         case VERIFY_LEAFSET :
@@ -580,11 +580,21 @@ public class Peer implements Node {
       if ( peer != null
           && row == request.getNetworkTraceIdentifiers().size() - 1 )
       {
-        // Forward request to node with matching prefix
-        request.incrementRow();
-        TCPConnection intermediate = ConnectionUtilities
-            .establishConnection( this, peer.getHost(), peer.getPort() );
-        intermediate.getTCPSender().sendData( request.getBytes() );
+        // A. Forward request to node with matching prefix
+        try
+        {
+          TCPConnection intermediate = ConnectionUtilities
+              .establishConnection( this, peer.getHost(), peer.getPort() );
+          request.incrementRow();
+          intermediate.getTCPSender().sendData( request.getBytes() );
+        } catch ( IOException e )
+        {
+          metadata.removePeerFromTable( peer );
+          LOG.debug(
+              "Peer no longer exists, and must be removed from its DHT" );
+          constructDHT( request );
+          return;
+        }
         next = peer.getIdentifier();
       } else
       {
@@ -609,18 +619,35 @@ public class Peer implements Node {
               request.setCCW( metadata.leaf().getCCW() );
             }
           }
-          // Send request back to destination
-          TCPConnection destination = ConnectionUtilities.establishConnection(
-              this, request.getDestination().getHost(),
-              request.getDestination().getPort() );
-          destination.getTCPSender().sendData( request.getBytes() );
+          try
+          {
+            // B. Send request back to destination
+            TCPConnection destination = ConnectionUtilities.establishConnection(
+                this, request.getDestination().getHost(),
+                request.getDestination().getPort() );
+            destination.getTCPSender().sendData( request.getBytes() );
+          } catch ( IOException e )
+          {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+          }
           next = request.getDestination().getIdentifier();
         } else
         {
-          // Forward request to intermediary closer node
-          TCPConnection intermediate = ConnectionUtilities
-              .establishConnection( this, peer.getHost(), peer.getPort() );
-          intermediate.getTCPSender().sendData( request.getBytes() );
+          // C. Forward request to intermediary closer node
+          try
+          {
+            TCPConnection intermediate = ConnectionUtilities
+                .establishConnection( this, peer.getHost(), peer.getPort() );
+            intermediate.getTCPSender().sendData( request.getBytes() );
+          } catch ( IOException e )
+          {
+            metadata.removePeerFromTable( peer );
+            LOG.debug(
+                "Peer no longer exists, and must be removed from its DHT" );
+            constructDHT( request );
+            return;
+          }
           next = peer.getIdentifier();
         }
       }
