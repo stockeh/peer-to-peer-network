@@ -1,15 +1,10 @@
 package cs555.system.node;
 
-import java.io.File;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.ServerSocket;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.Date;
 import java.util.HashSet;
-import java.util.Map.Entry;
 import java.util.Scanner;
 import java.util.Set;
 import java.util.concurrent.ExecutorService;
@@ -21,14 +16,13 @@ import cs555.system.transport.TCPConnection;
 import cs555.system.transport.TCPServerThread;
 import cs555.system.util.ConnectionUtilities;
 import cs555.system.util.Constants;
+import cs555.system.util.FileUtilities;
 import cs555.system.util.IdentifierUtilities;
 import cs555.system.util.Logger;
 import cs555.system.util.Properties;
-import cs555.system.wireformats.DataTransfer;
 import cs555.system.wireformats.DiscoverNodeResponse;
 import cs555.system.wireformats.DiscoverPeerRequest;
 import cs555.system.wireformats.Event;
-import cs555.system.wireformats.GenericMessage;
 import cs555.system.wireformats.GenericPeerMessage;
 import cs555.system.wireformats.JoinNetwork;
 import cs555.system.wireformats.Protocol;
@@ -176,6 +170,8 @@ public class Peer implements Node {
           break;
 
         case EXIT :
+          exit();
+          running = false;
           break;
 
         case HELP :
@@ -189,9 +185,26 @@ public class Peer implements Node {
           break;
       }
     }
-    LOG.info( metadata.self().getHost() + ":" + metadata.self().getPort()
-        + " has unregistered and is terminating." );
+    LOG.info(
+        metadata.self().toString() + " has unregistered and is terminating." );
     System.exit( 0 );
+  }
+
+  private synchronized void exit() {
+    try
+    {
+      ConnectionUtilities
+          .establishConnection( this, Properties.DISCOVERY_HOST,
+              Properties.DISCOVERY_PORT )
+          .getTCPSender()
+          .sendData( ( new GenericPeerMessage( Protocol.UNREGISTER_REQUEST,
+              metadata.self() ).getBytes() ) );
+    } catch ( IOException e )
+    {
+      LOG.error(
+          "Unable to reach the discovery node to exit. " + e.toString() );
+      e.printStackTrace();
+    }
   }
 
   /**
@@ -238,11 +251,11 @@ public class Peer implements Node {
         break;
 
       case Protocol.STORE_DATA_REQUEST :
-        write( event, connection );
+        FileUtilities.write( metadata, event, connection );
         break;
 
       case Protocol.READ_DATA_REQUEST :
-        read( event, connection );
+        FileUtilities.read( metadata, event, connection );
         break;
 
       case Protocol.VERIFY_APPLICAITON_LEAVES :
@@ -325,91 +338,6 @@ public class Peer implements Node {
       LOG.info(
           "Leaf set has not been established for peer yet. Please add another"
               + " peer to the network." );
-    }
-  }
-
-  /**
-   * Read a file on the request peer if it exists.
-   * 
-   * <p>
-   * Data is stored by the specified {@code fileSystemPath} and a unique
-   * host connection string.
-   * </p>
-   * 
-   * @param event
-   * @param connection from the Store that will be used for response
-   */
-  private void read(Event event, TCPConnection connection) {
-    GenericMessage request = ( GenericMessage ) event;
-
-    String fileSystemPath = request.getMessage().split( "\t" )[ 0 ] + "-"
-        + metadata.self().getConnection();
-    Path path =
-        Paths.get( File.separator, "tmp", "stock", "pastry", fileSystemPath );
-    byte[] data = null;
-    try
-    {
-      data = Files.readAllBytes( path );
-    } catch ( IOException e )
-    {
-      LOG.error( "Unable to read " + fileSystemPath + " from disk. "
-          + e.toString() );
-      e.printStackTrace();
-    }
-    try
-    {
-      connection.getTCPSender()
-          .sendData( ( new DataTransfer( Protocol.READ_DATA_RESPONSE, data,
-              metadata.self().toString() ) ).getBytes() );
-    } catch ( IOException e )
-    {
-      LOG.error( "Unable to send message to store. " + e.toString() );
-      e.printStackTrace();
-    }
-  }
-
-  /**
-   * Process an incoming file by saving it to disk, and responding to
-   * the Store with the status of the write operation.
-   * 
-   * <p>
-   * Data is stored by the specified {@code fileSystemPath} and a unique
-   * host connection string.
-   * </p>
-   * 
-   * @param event
-   * @param connection from the Store that will be used for response
-   */
-  private void write(Event event, TCPConnection connection) {
-    DataTransfer request = ( DataTransfer ) event;
-    String[] descriptor = request.getDescriptor().split( "\t" );
-    metadata.addFile( descriptor[ 0 ], descriptor[ 1 ] );
-    String fileSystemPath =
-        descriptor[ 0 ] + "-" + metadata.self().getConnection();
-    Path path =
-        Paths.get( File.separator, "tmp", "stock", "pastry", fileSystemPath );
-    boolean success = Constants.SUCCESS;
-    try
-    {
-      Files.createDirectories( path.getParent() );
-      Files.write( path, request.getData() );
-      LOG.info( "Finished writing " + fileSystemPath + " to disk." );
-    } catch ( IOException e )
-    {
-      LOG.error(
-          "Unable to save " + fileSystemPath + " to disk. " + e.toString() );
-      e.printStackTrace();
-      success = Constants.FAILURE;
-    }
-    try
-    {
-      connection.getTCPSender()
-          .sendData( ( new GenericPeerMessage( Protocol.STORE_DATA_RESPONSE,
-              metadata.self(), success ) ).getBytes() );
-    } catch ( IOException e )
-    {
-      LOG.error( "Unable to send message to store. " + e.toString() );
-      e.printStackTrace();
     }
   }
 
@@ -526,54 +454,9 @@ public class Peer implements Node {
       synchronized ( metadata.files() )
       {
         metadata.files().entrySet()
-            .removeIf( entry -> migrateData( entry, request.getPeer() ) );
+            .removeIf( entry -> FileUtilities.migrateData( this, metadata,
+                executorService, entry, request.getPeer() ) );
       }
-    }
-  }
-
-  /**
-   * Migrate data from this node to the newly added neighbor, which is
-   * the same as the connection who just joined.
-   * 
-   * @param entry key/value pair as fileSystemPath/fileIdentifier
-   * @param peerInformation
-   * @return true if a file has to be migrated, false otherwise
-   */
-  private boolean migrateData(Entry<String, String> entry,
-      PeerInformation leaf) {
-    String k = entry.getKey(), v = entry.getValue();
-    PeerInformation closest = metadata.leaf().getClosestLeaf( v );
-    if ( closest == null || closest.equals( leaf ) )
-    {
-      String fileSystemPath = k + "-" + metadata.self().getConnection();
-      Path path =
-          Paths.get( File.separator, "tmp", "stock", "pastry", fileSystemPath );
-      byte[] data = null;
-      try
-      {
-        data = Files.readAllBytes( path );
-        TCPConnection connection = ConnectionUtilities
-            .establishConnection( this, leaf.getHost(), leaf.getPort() );
-        connection.submitTo( executorService );
-        connection.getTCPSender()
-            .sendData( ( new DataTransfer( Protocol.STORE_DATA_REQUEST, data,
-                k + "\t" + v ) ).getBytes() );
-        LOG.info( ( new StringBuilder() ).append( "The file " )
-            .append( File.separator ).append( k )
-            .append( " is being migrated to " ).append( leaf.toString() )
-            .toString() );
-        Files.delete( path );
-      } catch ( IOException e )
-      {
-        LOG.error(
-            "Unable to migrate " + fileSystemPath + ", " + e.toString() );
-        e.printStackTrace();
-        return false;
-      }
-      return true;
-    } else
-    {
-      return false;
     }
   }
 
@@ -756,8 +639,7 @@ public class Peer implements Node {
       }
     } catch ( IOException e )
     {
-      LOG.error(
-          "Unable to send leaf set request to peers. " + e.toString() );
+      LOG.error( "Unable to send leaf set request to peers. " + e.toString() );
       e.printStackTrace();
     }
     LOG.info( metadata.leaf().toString() );
@@ -789,8 +671,8 @@ public class Peer implements Node {
           metadata.self() ).getBytes();
     } catch ( IOException e )
     {
-      LOG.error( "Unable to send create output stream for message. "
-          + e.toString() );
+      LOG.error(
+          "Unable to send create output stream for message. " + e.toString() );
       e.printStackTrace();
       return;
     }

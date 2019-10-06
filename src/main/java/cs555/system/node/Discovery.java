@@ -77,8 +77,8 @@ public class Discovery implements Node {
       discovery.interact();
     } catch ( IOException e )
     {
-      LOG.error( "Unable to successfully start discovery. Exiting. "
-          + e.toString() );
+      LOG.error(
+          "Unable to successfully start discovery. Exiting. " + e.toString() );
       System.exit( 1 );
     }
   }
@@ -122,7 +122,7 @@ public class Discovery implements Node {
    */
   @Override
   public void onEvent(Event event, TCPConnection connection) {
-    // LOG.debug( event.toString() );
+    LOG.debug( event.toString() );
     switch ( event.getType() )
     {
       case Protocol.REGISTER_REQUEST :
@@ -130,12 +130,35 @@ public class Discovery implements Node {
         break;
 
       case Protocol.UNREGISTER_REQUEST :
+        exit( event, connection );
         break;
 
       case Protocol.DISCOVER_NODE_REQUEST :
         selectPeerNode( connection );
         break;
     }
+  }
+
+  /**
+   * Allows for Discovery to have a good representation of the
+   * <i>live</i> nodes in the network.
+   * 
+   * @param event
+   * @param connection
+   */
+  private synchronized void exit(Event event, TCPConnection connection) {
+    connection.close();
+    GenericPeerMessage request = ( GenericPeerMessage ) event;
+    boolean success = registeredNodes.remove( request.getPeer() );
+
+    StringBuilder sb = ( new StringBuilder( "The exit request from peer ( " ) )
+        .append( request.getPeer().toString() ).append( " ) was " );
+    if ( !success )
+    {
+      sb.append( "NOT " );
+    }
+    sb.append( "successful!" );
+    LOG.info( sb.toString() );
   }
 
   /**
@@ -163,8 +186,7 @@ public class Discovery implements Node {
         LOG.debug( "MSG SEND to Peer" );
       } catch ( IOException e )
       {
-        LOG.error(
-            "Unable to send response message to peer. " + e.toString() );
+        LOG.error( "Unable to send response message to peer. " + e.toString() );
         e.printStackTrace();
       }
     } else
