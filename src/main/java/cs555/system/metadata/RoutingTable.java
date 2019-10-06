@@ -67,6 +67,17 @@ public class RoutingTable {
   }
 
   /**
+   * Remove a peer from a routing table by setting the entry to
+   * {@code null}.
+   * 
+   * @param row
+   * @param col
+   */
+  public void removePeerFromTable(int row, int col) {
+    table[ row ][ col ] = null;
+  }
+
+  /**
    * Get the closest peer to the destination
    * 
    * TODO: SHOULD ROW = 0, STARTING AT THE TOP LEVEL?

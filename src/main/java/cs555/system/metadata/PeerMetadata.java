@@ -10,6 +10,7 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import cs555.system.util.Constants;
+import cs555.system.util.Logger;
 
 /**
  * Class to maintain the information needed for a given peer. This
@@ -20,6 +21,8 @@ import cs555.system.util.Constants;
  *
  */
 public class PeerMetadata {
+
+  private static final Logger LOG = Logger.getInstance();
 
   private final RoutingTable table;
 
@@ -167,6 +170,31 @@ public class PeerMetadata {
   }
 
   /**
+   * Remove a peer from all applicable entries in this routing table.
+   * 
+   * @param peer to remove, if it exists
+   */
+  public void removePeerFromTable(PeerInformation peer) {
+    boolean show = false;
+    for ( int row = 0; row < Constants.NUMBER_OF_ROWS; ++row )
+    {
+      int col = Character.digit( peer.getIdentifier().charAt( row ), 16 );
+      PeerInformation other = table.getTableIndex( row, col );
+      if ( peer.equals( other ) )
+      {
+        show = true;
+        table.removePeerFromTable( row, col );
+      }
+    }
+    if ( show )
+    {
+      LOG.info( ( new StringBuilder( "The peer ( " ).append( peer.toString() )
+          .append( " ) was removed from the routing table." ).toString() ) );
+      table.display();
+    }
+  }
+
+  /**
    * 
    * @param filename
    */
@@ -199,7 +227,8 @@ public class PeerMetadata {
           .thenComparing( Comparator.naturalOrder() ) );
       sb.append( "Files stored on " ).append( self.toString() )
           .append( " include: \n\n" );
-      f.forEach( v -> sb.append( "\t>\t" ).append( File.separator ).append( v ).append( "\n" ) );
+      f.forEach( v -> sb.append( "\t>\t" ).append( File.separator ).append( v )
+          .append( "\n" ) );
       return sb.toString();
     }
   }
