@@ -193,6 +193,7 @@ public class Peer implements Node {
   private synchronized void exit() {
     try
     {
+      // 1. Exit from Discovery
       ConnectionUtilities
           .establishConnection( this, Properties.DISCOVERY_HOST,
               Properties.DISCOVERY_PORT )
@@ -201,9 +202,47 @@ public class Peer implements Node {
               metadata.self() ).getBytes() ) );
     } catch ( IOException e )
     {
-      LOG.error(
-          "Unable to reach the discovery node to exit. " + e.toString() );
+      LOG.error( "Unable to send required requests to Discovery for exiting"
+          + " the network gracefully. " + e.toString() );
       e.printStackTrace();
+    }
+    if ( metadata.leaf().isPopulated() )
+    {
+      // 2. Migrate data to leaf set
+      PeerInformation cw = metadata.leaf().getCW();
+      metadata.leaf().setLeaf( metadata.self(), Constants.CLOCKWISE );
+      metadata.files().entrySet().removeIf( entry -> FileUtilities
+          .migrateData( this, metadata, executorService, entry, cw ) );
+
+      PeerInformation ccw = metadata.leaf().getCCW();
+      metadata.leaf().setLeaf( metadata.self(), Constants.COUNTER_CLOCKWISE );
+      metadata.files().entrySet().removeIf( entry -> FileUtilities
+          .migrateData( this, metadata, executorService, entry, ccw ) );
+      try
+      {
+        // 3. Update leaf set
+        ConnectionUtilities
+            .establishConnection( this, cw.getHost(), cw.getPort() )
+            .getTCPSender().sendData(
+                ( new GenericPeerMessage( Protocol.FORWARD_LEAF_IDENTIFIER, ccw,
+                    Constants.COUNTER_CLOCKWISE ) ).getBytes() );
+        ConnectionUtilities
+            .establishConnection( this, ccw.getHost(), ccw.getPort() )
+            .getTCPSender().sendData(
+                ( new GenericPeerMessage( Protocol.FORWARD_LEAF_IDENTIFIER, cw,
+                    Constants.CLOCKWISE ) ).getBytes() );
+
+        // 4. Update routing tables... or have other peers catch exception
+        // when finding closest peers
+      } catch ( IOException e )
+      {
+        LOG.error( "Unable to send required requests to other peers to exit"
+            + "  the network gracefully. " + e.toString() );
+        e.printStackTrace();
+      }
+    } else
+    {
+      LOG.error( "There are no peers in the network. All files are lost." );
     }
   }
 
@@ -500,7 +539,7 @@ public class Peer implements Node {
           metadata.getCondition().await();
         }
         constructDHT( request );
-      } catch ( IOException | InterruptedException e )
+      } catch ( InterruptedException e )
       {
         e.printStackTrace();
       } finally
@@ -514,10 +553,8 @@ public class Peer implements Node {
    * Construct the DHT for the peer requesting to join the network.
    * 
    * @param request
-   * @throws IOException
    */
-  private synchronized void constructDHT(JoinNetwork request)
-      throws IOException {
+  private synchronized void constructDHT(JoinNetwork request) {
 
     int row = request.getRow();
 
@@ -612,9 +649,8 @@ public class Peer implements Node {
     PeerInformation cw = joinRequest.getCW(), ccw = joinRequest.getCCW();
     try
     {
-      GenericPeerMessage request =
-          new GenericPeerMessage( Protocol.FORWARD_LEAF_IDENTIFIER,
-              metadata.self(), Constants.COUNTER_CLOCKWISE );
+      GenericPeerMessage request = new GenericPeerMessage(
+          Protocol.FORWARD_LEAF_IDENTIFIER, metadata.self() );
 
       TCPConnection connection = connections.cacheConnection( this, cw, false );
       metadata.leaf().setLeaf( cw, Constants.CLOCKWISE );
