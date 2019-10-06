@@ -10,7 +10,6 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import cs555.system.util.Constants;
-import cs555.system.util.Logger;
 
 /**
  * Class to maintain the information needed for a given peer. This
@@ -21,8 +20,6 @@ import cs555.system.util.Logger;
  *
  */
 public class PeerMetadata {
-
-  private static final Logger LOG = Logger.getInstance();
 
   private final RoutingTable table;
 
@@ -174,7 +171,7 @@ public class PeerMetadata {
    * 
    * @param peer to remove, if it exists
    */
-  public void removePeerFromTable(PeerInformation peer) {
+  public boolean removePeerFromTable(PeerInformation peer) {
     boolean show = false;
     for ( int row = 0; row < Constants.NUMBER_OF_ROWS; ++row )
     {
@@ -186,12 +183,7 @@ public class PeerMetadata {
         table.removePeerFromTable( row, col );
       }
     }
-    if ( show )
-    {
-      LOG.info( ( new StringBuilder( "The peer ( " ).append( peer.toString() )
-          .append( " ) was removed from the routing table." ).toString() ) );
-      table.display();
-    }
+    return show;
   }
 
   /**

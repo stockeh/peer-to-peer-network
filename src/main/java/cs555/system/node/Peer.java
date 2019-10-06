@@ -210,12 +210,12 @@ public class Peer implements Node {
     {
       // 2. Migrate data to leaf set
       PeerInformation cw = metadata.leaf().getCW();
-      metadata.leaf().setLeaf( metadata.self(), Constants.CLOCKWISE );
+      metadata.leaf().setSelf( cw );
       metadata.files().entrySet().removeIf( entry -> FileUtilities
           .migrateData( this, metadata, executorService, entry, cw ) );
 
       PeerInformation ccw = metadata.leaf().getCCW();
-      metadata.leaf().setLeaf( metadata.self(), Constants.COUNTER_CLOCKWISE );
+      metadata.leaf().setSelf( ccw );
       metadata.files().entrySet().removeIf( entry -> FileUtilities
           .migrateData( this, metadata, executorService, entry, ccw ) );
       try
@@ -427,8 +427,15 @@ public class Peer implements Node {
       LOG.info( request.toString() + next );
     } catch ( IOException e )
     {
-      LOG.error( "Unable to send message. " + e.toString() );
-      e.printStackTrace();
+      if ( metadata.removePeerFromTable( closest ) )
+      {
+        LOG.info( ( new StringBuilder( "The peer ( " )
+            .append( closest.toString() )
+            .append( " ) was removed from the routing table." ).toString() ) );
+        metadata.table().display();
+      }
+      lookup( event, connection );
+      return;
     }
   }
 
@@ -589,9 +596,14 @@ public class Peer implements Node {
           intermediate.getTCPSender().sendData( request.getBytes() );
         } catch ( IOException e )
         {
-          metadata.removePeerFromTable( peer );
-          LOG.debug(
-              "Peer no longer exists, and must be removed from its DHT" );
+          if ( metadata.removePeerFromTable( peer ) )
+          {
+            LOG.info(
+                ( new StringBuilder( "The peer ( " ).append( peer.toString() )
+                    .append( " ) was removed from the routing table." )
+                    .toString() ) );
+            metadata.table().display();
+          }
           constructDHT( request );
           return;
         }
@@ -642,9 +654,14 @@ public class Peer implements Node {
             intermediate.getTCPSender().sendData( request.getBytes() );
           } catch ( IOException e )
           {
-            metadata.removePeerFromTable( peer );
-            LOG.debug(
-                "Peer no longer exists, and must be removed from its DHT" );
+            if ( metadata.removePeerFromTable( peer ) )
+            {
+              LOG.info(
+                  ( new StringBuilder( "The peer ( " ).append( peer.toString() )
+                      .append( " ) was removed from the routing table." )
+                      .toString() ) );
+              metadata.table().display();
+            }
             constructDHT( request );
             return;
           }
@@ -740,6 +757,7 @@ public class Peer implements Node {
       return;
     }
     Set<PeerInformation> processed = new HashSet<>();
+    processed.add( metadata.self() );
     Stream.of( metadata.table().getTable() ).flatMap( Stream::of )
         .forEach( peer ->
         {
@@ -753,8 +771,8 @@ public class Peer implements Node {
               connection.getTCPSender().sendData( data );
             } catch ( NumberFormatException | IOException e )
             {
-              LOG.error(
-                  "Unable to send message to source node. " + e.toString() );
+              LOG.error( "Unable to send message to peer ( " + peer.toString()
+                  + " ) " + e.toString() );
               e.printStackTrace();
             }
             processed.add( peer );

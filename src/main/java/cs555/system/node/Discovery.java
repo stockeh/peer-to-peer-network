@@ -126,7 +126,7 @@ public class Discovery implements Node {
     switch ( event.getType() )
     {
       case Protocol.REGISTER_REQUEST :
-        registerRequestHandler( event, connection );
+        register( event, connection );
         break;
 
       case Protocol.UNREGISTER_REQUEST :
@@ -134,7 +134,7 @@ public class Discovery implements Node {
         break;
 
       case Protocol.DISCOVER_NODE_REQUEST :
-        selectPeerNode( connection );
+        select( connection );
         break;
     }
   }
@@ -170,8 +170,7 @@ public class Discovery implements Node {
    * @param event
    * @param connection
    */
-  private synchronized void registerRequestHandler(Event event,
-      TCPConnection connection) {
+  private synchronized void register(Event event, TCPConnection connection) {
     GenericPeerMessage request = ( GenericPeerMessage ) event;
     PeerInformation peer = new PeerInformation( request.getIdentifier(),
         request.getHost(), request.getPort() );
@@ -191,7 +190,7 @@ public class Discovery implements Node {
       }
     } else
     {
-      selectPeerNode( connection );
+      select( connection );
       registeredNodes.add( peer );
       LOG.info( ( new StringBuilder() )
           .append( "New peer has been registered with Discovery: " )
@@ -205,7 +204,7 @@ public class Discovery implements Node {
    * 
    * @param connection
    */
-  private synchronized void selectPeerNode(TCPConnection connection) {
+  private synchronized void select(TCPConnection connection) {
     DiscoverNodeResponse response;
     int numberOfNodes = registeredNodes.size();
     if ( numberOfNodes == 0 )

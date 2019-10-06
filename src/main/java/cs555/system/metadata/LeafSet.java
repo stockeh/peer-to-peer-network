@@ -13,7 +13,7 @@ package cs555.system.metadata;
  */
 public class LeafSet {
 
-  private final PeerInformation self;
+  private PeerInformation self;
 
   private PeerInformation cw;
 
@@ -51,6 +51,15 @@ public class LeafSet {
     {
       this.ccw = peer;
     }
+  }
+
+  /**
+   * Only use when deleting a peer and migrating data
+   * 
+   * @param self
+   */
+  public void setSelf(PeerInformation self) {
+    this.self = self;
   }
 
   public PeerInformation getCW() {
