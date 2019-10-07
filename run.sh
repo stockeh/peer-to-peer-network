@@ -21,6 +21,21 @@ function prop {
     grep "${1}" ${APPLICATION_PROPERTIES}|cut -d'=' -f2
 }
 
+function jumpto
+{
+    label=$1
+    cmd=$(sed -n "/$label:/{:a;n;p;ba};" $0 | grep -v ':$')
+    eval "$cmd"
+    exit
+}
+
+if [ "$1" = "peer" ]
+then
+
+jumpto peer
+
+fi
+
 # Launch Discovery
 
 LINES=`find . -name "*.java" -print | xargs wc -l | grep "total" | awk '{$1=$1};1'`
@@ -33,6 +48,8 @@ sleep 1
 
 # Launch Peers
 
+peer:
+
 SCRIPT="java -cp $JAR_PATH cs555.system.node.Peer"
 
 k=0
@@ -42,7 +59,7 @@ do
     echo 'logging into '$i
     ARG=`echo $i | cut -d"+" -f2`
     MACHINE=`echo $i | cut -d"+" -f1`
-    OPTION='--tab -t "'$MACHINE' | '$ARG'" -e "ssh -t '$MACHINE' echo '$k'; sleep '$k'; '$SCRIPT' '$ARG'"'
+    OPTION='--tab -t "'$MACHINE' | '$ARG'" -e "ssh -t '$MACHINE' sleep '$k'; echo '$SCRIPT' '$ARG'; '$SCRIPT' '$ARG'"'
     COMMAND+=" $OPTION"
     k=`echo $k + 1 | bc`
 done

@@ -80,11 +80,12 @@ public class Peer implements Node {
    * @param args
    */
   public static void main(String[] args) {
-    LOG.info( "Peer node starting up at: " + new Date() );
     try ( ServerSocket serverSocket = new ServerSocket( 0 ) )
     {
       Peer node = new Peer( InetAddress.getLocalHost().getHostName(),
           serverSocket.getLocalPort() );
+      LOG.info( "Peer node starting up at: " + new Date() + ", on "
+          + node.metadata.self().getConnection() );
 
       ( new Thread(
           new TCPServerThread( node, serverSocket, node.executorService ),
@@ -566,7 +567,8 @@ public class Peer implements Node {
   private synchronized void constructDHT(JoinNetwork request) {
 
     int row = request.getRow();
-
+    LOG.debug( "Current row for peer ( " + request.getDestination().toString()
+        + " ) is: " + row );
     if ( row == request.getNetworkTraceIdentifiers().size() )
     {
       request.setTableRow( metadata.table().getTableRow( row ) );
@@ -589,7 +591,7 @@ public class Peer implements Node {
       if ( peer != null
           && row == request.getNetworkTraceIdentifiers().size() - 1 )
       {
-        // A. Forward request to node with matching prefix
+        LOG.debug( "Forward request to node with matching prefix." ); // A.
         try
         {
           TCPConnection intermediate = ConnectionUtilities
@@ -616,6 +618,7 @@ public class Peer implements Node {
             request.getDestination(), row );
         if ( peer.equals( metadata.self() ) )
         {
+          LOG.debug( "Found closest node and responding to destination." ); // B.
           if ( !metadata.leaf().isPopulated() )
           {
             request.setCW( metadata.self() );
@@ -635,7 +638,6 @@ public class Peer implements Node {
           }
           try
           {
-            // B. Send request back to destination
             TCPConnection destination = ConnectionUtilities.establishConnection(
                 this, request.getDestination().getHost(),
                 request.getDestination().getPort() );
@@ -648,7 +650,7 @@ public class Peer implements Node {
           next = request.getDestination().getIdentifier();
         } else
         {
-          // C. Forward request to intermediary closer node
+          LOG.debug( "Forward request to intermediary closer node in DHT." ); // C.
           try
           {
             TCPConnection intermediate = ConnectionUtilities

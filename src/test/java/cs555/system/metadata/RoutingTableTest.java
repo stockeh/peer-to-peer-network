@@ -34,5 +34,36 @@ public class RoutingTableTest {
     
     assertEquals( a, t.closest( metadata.self(),
         new PeerInformation( "6000", null, 0 ), 0 ) );
-  }
+    
+    /* --------------------------------------------*/
+    
+    metadata = new PeerMetadata( null, 0 );
+    a = new PeerInformation( "1254", null, 0 );
+    b = new PeerInformation( "1123", null, 0 );
+
+    t = metadata.table();
+    t.addPeerToTable( a, 1 );
+    t.addPeerToTable( b, 2 );
+
+    metadata.setIdentifier( "1111" );
+    metadata.addSelfToTable();
+    t.display();
+
+    assertEquals( a, t.closest( metadata.self(),
+        new PeerInformation( "1E47", null, 0 ), 1 ) );
+  }  
+  /**
+   * 
+-----------------------------------------------------------------------------------------------------------------
+| 0010 | 1111 | 28AA | 3CCD | 4000 | 5591 | 6251 | 7BCA | 8E13 | 9999 | AAAA | BBBB | CCCF | DFFD | EBB9 | null | 
+| null | 1111 | 1254 | null | null | null | null | null | null | null | null | null | null | null | null | null | 
+| null | 1111 | 1123 | null | null | null | null | null | null | null | null | null | null | null | null | null | 
+| null | 1111 | null | null | null | null | null | null | null | null | null | null | null | null | null | null | 
+-----------------------------------------------------------------------------------------------------------------
+cs555.system.transport.TCPReceiverThread(run:74) [DEBUG] - Closing connection... java.io.EOFException
+cs555.system.node.Peer(onEvent:254) [DEBUG] - JOIN_NETWORK_REQUEST | New Node: 1E47 | Hop: 0 | Next Node: 
+cs555.system.node.Peer(constructDHT:569) [DEBUG] - Current row for peer ( 1E47 | neptune:36089 ) is: 1
+cs555.system.node.Peer(constructDHT:620) [DEBUG] - Found closest node and responding to destination.
+cs555.system.node.Peer(constructDHT:674) [INFO] - JOIN_NETWORK_REQUEST | New Node: 1E47 | Hop: 1 | Next Node: 1E47
+   */
 }
