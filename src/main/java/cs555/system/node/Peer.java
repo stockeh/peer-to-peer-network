@@ -360,7 +360,9 @@ public class Peer implements Node {
         {
           request.addNetworkTraceRoute( metadata.self().getIdentifier() );
           StringBuilder sb =
-              new StringBuilder( "Clockwise Network Route Trace:" );
+              new StringBuilder( "Clockwise Network Route Trace ( " )
+                  .append( request.getNetworkTraceIdentifiers().size() - 1 )
+                  .append( " ): " );
           for ( String s : request.getNetworkTraceIdentifiers() )
           {
             sb.append( " -> " ).append( s );

@@ -27,7 +27,7 @@ LINES=`find . -name "*.java" -print | xargs wc -l | grep "total" | awk '{$1=$1};
 echo Project has "$LINES" lines
 
 gradle clean; gradle build
-gnome-terminal --geometry=170x60 -e "ssh -t $(prop 'discovery.host') 'java -cp $JAR_PATH cs555.system.node.Discovery; bash;'"
+gnome-terminal --geometry=170x60 -t "Discovery" -e "ssh -t $(prop 'discovery.host') 'java -cp $JAR_PATH cs555.system.node.Discovery; bash;'"
 
 sleep 1
 
@@ -35,21 +35,21 @@ sleep 1
 
 SCRIPT="java -cp $JAR_PATH cs555.system.node.Peer"
 
-for ((j=0; j<${1:-1}; j++))
+k=0
+COMMAND='gnome-terminal'
+for i in `cat $MACHINE_LIST`
 do
-    COMMAND='gnome-terminal'
-    for i in `cat $MACHINE_LIST`
-    do
-        echo 'logging into '$i
-        ARG=`echo $i | cut -d"+" -f2`
-        OPTION='--tab -e "ssh -t '$i' '$SCRIPT' '$ARG'"'
-        COMMAND+=" $OPTION"
-    done
-    eval $COMMAND &
+    echo 'logging into '$i
+    ARG=`echo $i | cut -d"+" -f2`
+    MACHINE=`echo $i | cut -d"+" -f1`
+    OPTION='--tab -t "'$MACHINE' | '$ARG'" -e "ssh -t '$MACHINE' echo '$k'; sleep '$k'; '$SCRIPT' '$ARG'"'
+    COMMAND+=" $OPTION"
+    k=`echo $k + 1 | bc`
 done
+eval $COMMAND &
 
 sleep 1
 
 # Launch Store
 
-gnome-terminal --geometry=132x60 -e "ssh -t $(prop 'peer.host') 'java -cp $JAR_PATH cs555.system.node.Store; bash;'"
+gnome-terminal --geometry=132x60 -t "Store" -e "ssh -t $(prop 'store.host') 'java -cp $JAR_PATH cs555.system.node.Store; bash;'"
