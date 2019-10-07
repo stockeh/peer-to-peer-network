@@ -3,6 +3,7 @@ package cs555.system.node;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
 import java.util.Random;
@@ -237,8 +238,9 @@ public class Discovery implements Node {
           "There are no connections to identify. Initialize a new peer." );
     } else
     {
-      System.out.println(
-          "\nThere are " + registeredNodes.size() + " total peers:\n" );
+      LOG.info( "\nThere are " + registeredNodes.size() + " total peers:\n" );
+      registeredNodes
+          .sort( Comparator.comparing( PeerInformation::getIdentifier ) );
       registeredNodes
           .forEach( v -> System.out.println( "\t>\t" + v.toString() ) );
       System.out.println();
