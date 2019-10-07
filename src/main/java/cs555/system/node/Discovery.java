@@ -173,8 +173,7 @@ public class Discovery implements Node {
    */
   private synchronized void register(Event event, TCPConnection connection) {
     GenericPeerMessage request = ( GenericPeerMessage ) event;
-    PeerInformation peer = new PeerInformation( request.getIdentifier(),
-        request.getHost(), request.getPort() );
+    PeerInformation peer = request.getPeer();
     if ( registeredNodes.contains( peer ) )
     {
       LOG.debug( "Duplicate Identifier Found." );

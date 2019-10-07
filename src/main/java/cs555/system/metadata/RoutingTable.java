@@ -94,12 +94,18 @@ public class RoutingTable {
 
     int dest = Integer.parseInt( destination.getIdentifier(), 16 );
     int diff = Integer.MAX_VALUE, other, temp_diff;
+    PeerInformation closest = null, temp;
+
+    if ( ( temp = this.getTableIndex( row, destCol ) ) != null )
+    {
+      other = Integer.parseInt( temp.getIdentifier(), 16 );
+      diff = Math.abs( other - dest );
+      closest = temp;
+    }
 
     boolean direction = Constants.CLOCKWISE;
 
-    PeerInformation closest = null, temp;
-
-    for ( int i = 1; i < 9; ++i )
+    for ( int i = 1; i < 16; ++i )
     {
       // clockwise
       int col = ( destCol + i ) & 0xF;
