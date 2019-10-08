@@ -149,15 +149,32 @@ public class LeafSet {
   }
 
   /**
+   * Remove all leaves from the leaf set
+   * 
+   */
+  public void reset() {
+    this.cw = null;
+    this.ccw = null;
+  }
+
+  /**
    * Convert the leaf set to a {@code String}
    * 
    */
   @Override
   public String toString() {
-    return ( new StringBuilder( "Updated Leaf Set: { " ) )
-        .append( ccw.getIdentifier() ).append( " ccw <- " )
-        .append( self.getIdentifier() ).append( " -> cw " )
-        .append( cw.getIdentifier() ).append( " }" ).toString();
+    if ( !this.isPopulated() )
+    {
+      return ( new StringBuilder( "Updated Leaf Set: { " ) ).append( "null" )
+          .append( " ccw <- " ).append( self.getIdentifier() )
+          .append( " -> cw " ).append( "null" ).append( " }" ).toString();
+    } else
+    {
+      return ( new StringBuilder( "Updated Leaf Set: { " ) )
+          .append( ccw.getIdentifier() ).append( " ccw <- " )
+          .append( self.getIdentifier() ).append( " -> cw " )
+          .append( cw.getIdentifier() ).append( " }" ).toString();
+    }
   }
 
 }

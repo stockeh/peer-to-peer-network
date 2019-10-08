@@ -62,6 +62,7 @@ public class EventFactory {
       case Protocol.IDENTIFIER_COLLISION :
       case Protocol.DISCOVER_NODE_REQUEST :
       case Protocol.READ_DATA_REQUEST :
+      case Protocol.RESET_PEER :
         return new GenericMessage( marshalledBytes );
 
       case Protocol.DISCOVER_NODE_RESPONSE :

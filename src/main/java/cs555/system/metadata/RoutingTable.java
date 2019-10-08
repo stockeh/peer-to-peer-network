@@ -173,6 +173,14 @@ public class RoutingTable {
   }
 
   /**
+   * Remove all entries in the DHT.
+   * 
+   */
+  public void reset() {
+    this.table = new PeerInformation[ Constants.NUMBER_OF_ROWS ][ 16 ];
+  }
+  
+  /**
    * Print the DHT to the console in a readable format.
    * 
    */
