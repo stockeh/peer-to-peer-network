@@ -23,6 +23,7 @@ import cs555.system.util.Properties;
 import cs555.system.wireformats.DiscoverNodeResponse;
 import cs555.system.wireformats.DiscoverPeerRequest;
 import cs555.system.wireformats.Event;
+import cs555.system.wireformats.GenericMessage;
 import cs555.system.wireformats.GenericPeerMessage;
 import cs555.system.wireformats.JoinNetwork;
 import cs555.system.wireformats.Protocol;
@@ -222,17 +223,25 @@ public class Peer implements Node {
       try
       {
         // 3. Update leaf sets
-        ConnectionUtilities
-            .establishConnection( this, cw.getHost(), cw.getPort() )
-            .getTCPSender().sendData(
-                ( new GenericPeerMessage( Protocol.FORWARD_LEAF_IDENTIFIER, ccw,
-                    Constants.COUNTER_CLOCKWISE ) ).getBytes() );
-        ConnectionUtilities
-            .establishConnection( this, ccw.getHost(), ccw.getPort() )
-            .getTCPSender().sendData(
-                ( new GenericPeerMessage( Protocol.FORWARD_LEAF_IDENTIFIER, cw,
-                    Constants.CLOCKWISE ) ).getBytes() );
-
+        if ( cw.equals( ccw ) )
+        {
+          ConnectionUtilities
+              .establishConnection( this, cw.getHost(), cw.getPort() )
+              .getTCPSender().sendData(
+                  ( new GenericMessage( Protocol.RESET_PEER ) ).getBytes() );
+        } else
+        {
+          ConnectionUtilities
+              .establishConnection( this, cw.getHost(), cw.getPort() )
+              .getTCPSender().sendData(
+                  ( new GenericPeerMessage( Protocol.FORWARD_LEAF_IDENTIFIER,
+                      ccw, Constants.COUNTER_CLOCKWISE ) ).getBytes() );
+          ConnectionUtilities
+              .establishConnection( this, ccw.getHost(), ccw.getPort() )
+              .getTCPSender().sendData(
+                  ( new GenericPeerMessage( Protocol.FORWARD_LEAF_IDENTIFIER,
+                      cw, Constants.CLOCKWISE ) ).getBytes() );
+        }
         // 4. Update routing tables... or have other peers catch exception
         // when finding closest peers
       } catch ( IOException e )
@@ -302,7 +311,26 @@ public class Peer implements Node {
         connection.close();
         verifyApplicationLeafSet( ( DiscoverPeerRequest ) event, connection );
         break;
+
+      case Protocol.RESET_PEER :
+        reset( connection );
+        break;
     }
+  }
+
+  /**
+   * Reset the peer since it the last in the network
+   * 
+   * @param connection
+   */
+  private synchronized void reset(TCPConnection connection) {
+    connection.close();
+    metadata.table().reset();
+    metadata.addSelfToTable();
+    metadata.leaf().reset();
+    LOG.info( "Initial Routing Table: " );
+    metadata.table().display();
+    LOG.info( metadata.leaf().toString() );
   }
 
   /**
