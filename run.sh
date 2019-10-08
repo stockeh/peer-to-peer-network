@@ -34,6 +34,11 @@ then
 
 jumpto peer
 
+elif [ "$1" = "store" ]
+then
+
+jumpto store
+
 fi
 
 # Launch Discovery
@@ -42,9 +47,9 @@ LINES=`find . -name "*.java" -print | xargs wc -l | grep "total" | awk '{$1=$1};
 echo Project has "$LINES" lines
 
 gradle clean; gradle build
-gnome-terminal --geometry=170x60 -t "Discovery" -e "ssh -t $(prop 'discovery.host') 'java -cp $JAR_PATH cs555.system.node.Discovery; bash;'"
+gnome-terminal --geometry=170x50 -t "Discovery" -e "ssh -t $(prop 'discovery.host') cd '$DIR'; 'java -cp $JAR_PATH cs555.system.node.Discovery; bash;'"
 
-sleep 1
+sleep 2
 
 # Launch Peers
 
@@ -53,20 +58,22 @@ peer:
 SCRIPT="java -cp $JAR_PATH cs555.system.node.Peer"
 
 k=0
-COMMAND='gnome-terminal'
+COMMAND='gnome-terminal --geometry=200x40'
 for i in `cat $MACHINE_LIST`
 do
     echo 'logging into '$i
     ARG=`echo $i | cut -d"+" -f2`
     MACHINE=`echo $i | cut -d"+" -f1`
-    OPTION='--tab -t "'$MACHINE' | '$ARG'" -e "ssh -t '$MACHINE' sleep '$k'; echo '$SCRIPT' '$ARG'; '$SCRIPT' '$ARG'"'
+    OPTION='--tab -t "'$MACHINE' | '$ARG'" -e "ssh -t '$MACHINE' cd '$DIR'; sleep '$k'; echo '$SCRIPT' '$ARG'; '$SCRIPT' '$ARG'"'
     COMMAND+=" $OPTION"
-    k=`echo $k + 1 | bc`
+    k=`echo $k + 1.50 | bc`
 done
 eval $COMMAND &
 
 sleep 1
 
+store: 
+
 # Launch Store
 
-gnome-terminal --geometry=132x60 -t "Store" -e "ssh -t $(prop 'store.host') 'java -cp $JAR_PATH cs555.system.node.Store; bash;'"
+gnome-terminal --geometry=160x50 -t "Store" -e "ssh -t $(prop 'store.host') cd '$DIR'; 'java -cp $JAR_PATH cs555.system.node.Store; bash;'"

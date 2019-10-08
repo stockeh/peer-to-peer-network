@@ -7,8 +7,8 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import cs555.system.metadata.PeerInformation;
 import cs555.system.util.MessageUtilities;
 
@@ -25,7 +25,7 @@ public class DiscoverPeerRequest implements Event {
 
   private PeerInformation destination;
 
-  private List<String> networkTraceIdentifiers;
+  private Set<String> networkTraceIdentifiers;
 
   /**
    * Default constructor -
@@ -37,7 +37,7 @@ public class DiscoverPeerRequest implements Event {
     this.type = type;
     this.row = 0;
     this.destination = destination;
-    this.networkTraceIdentifiers = new ArrayList<>();
+    this.networkTraceIdentifiers = new LinkedHashSet<>();
   }
 
   /**
@@ -60,7 +60,7 @@ public class DiscoverPeerRequest implements Event {
     this.destination = MessageUtilities.readPeerInformation( din );
 
     short len = din.readShort();
-    this.networkTraceIdentifiers = new ArrayList<>( len );
+    this.networkTraceIdentifiers = new LinkedHashSet<>( len );
     int identifierLength;
     byte[] identifier;
     for ( int i = 0; i < len; ++i )
@@ -90,7 +90,7 @@ public class DiscoverPeerRequest implements Event {
     return destination;
   }
 
-  public List<String> getNetworkTraceIdentifiers() {
+  public Set<String> getNetworkTraceIdentifiers() {
     return networkTraceIdentifiers;
   }
 

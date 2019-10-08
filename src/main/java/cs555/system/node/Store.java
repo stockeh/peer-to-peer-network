@@ -43,6 +43,8 @@ public class Store implements Node {
 
   private static final String GET = "get";
 
+  private static final String DIR = "dir";
+
   private static final String EXIT = "exit";
 
   private static final String HELP = "help";
@@ -117,6 +119,10 @@ public class Store implements Node {
 
         case "fake" :
           FAKEUPLOAD( input );
+          break;
+
+        case DIR :
+          LOG.info( "Working Directory: " + System.getProperty( "user.dir" ) );
           break;
 
         case EXIT :
@@ -400,6 +406,7 @@ public class Store implements Node {
     } catch ( IOException e )
     {
       LOG.error( "Unable to upload file " + e.toString() );
+      displayHelp();
       connection.close();
       metadata.reset();
     }
@@ -416,7 +423,7 @@ public class Store implements Node {
     DiscoverNodeResponse response = ( DiscoverNodeResponse ) event;
     PeerInformation source = response.getSourceInformation();
     LOG.info(
-        "Connecting to the DHT through source node: " + source.toString() );
+        "Connecting to the network through source node: " + source.toString() );
     try
     {
       ConnectionUtilities
@@ -426,8 +433,7 @@ public class Store implements Node {
               metadata.item() ) ).getBytes() );
     } catch ( IOException e )
     {
-      LOG.error(
-          "Unable to send message to the source node. " + e.toString() );
+      LOG.error( "Unable to send message to the source node. " + e.toString() );
       e.printStackTrace();
     }
   }
@@ -446,6 +452,10 @@ public class Store implements Node {
     sb.append( "\n\t" ).append( GET )
         .append( "\t: retrieve a previously uploaded file " )
         .append( "-> get /fs_path /local_machine_path\n" );
+
+    sb.append( "\n\t" ).append( DIR )
+        .append( "\t: complete absolute path from where the" )
+        .append( " application was initialized \n" );
 
     sb.append( "\n\t" ).append( EXIT )
         .append( "\t: gracefully shutdown the application.\n" );

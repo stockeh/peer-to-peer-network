@@ -140,7 +140,7 @@ public class PeerMetadata {
    * </p>
    * 
    */
-  public void addSelfToTable() {
+  public synchronized void addSelfToTable() {
     for ( int i = 0; i < Constants.NUMBER_OF_ROWS; i++ )
     {
       table.addPeerToTable( self, i );
@@ -151,8 +151,11 @@ public class PeerMetadata {
    * Add a peer to all applicable locations in the routing table.
    * 
    * @param peer
+   * @return true if the DHT already contained the peer, false
+   *         otherwise.
    */
-  public void addPeerToTable(PeerInformation peer) {
+  public synchronized boolean addPeerToTable(PeerInformation peer) {
+    boolean contains = false;
     for ( int row = 0; row < Constants.NUMBER_OF_ROWS; ++row )
     {
       int selfCol = Character.digit( self.getIdentifier().charAt( row ), 16 );
@@ -160,10 +163,16 @@ public class PeerMetadata {
 
       if ( selfCol - destCol != 0 )
       {
+        PeerInformation previous = table.getTableIndex( row, destCol );
+        if ( previous != null && previous.equals( peer ) )
+        {
+          contains = true;
+        }
         table.addPeerToTable( peer, row );
         break;
       }
     }
+    return contains;
   }
 
   /**
@@ -171,7 +180,7 @@ public class PeerMetadata {
    * 
    * @param peer to remove, if it exists
    */
-  public boolean removePeerFromTable(PeerInformation peer) {
+  public synchronized boolean removePeerFromTable(PeerInformation peer) {
     boolean show = false;
     for ( int row = 0; row < Constants.NUMBER_OF_ROWS; ++row )
     {

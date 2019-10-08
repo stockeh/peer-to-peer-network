@@ -1,0 +1,15 @@
+upload data/cam.jpeg /
+upload data/greta.jpeg /
+upload data/light-rocket.png /
+upload data/mice.png /
+upload data/moon-rise.png /
+upload data/rocket.png /
+upload data/sun-rocket.png /
+
+get /cam.jpeg data/
+get /greta.jpeg data/
+get /light-rocket.png data/
+get /mice.png data/
+get /moon-rise.png data/
+get /rocket.png data/
+get /sun-rocket.png data/
