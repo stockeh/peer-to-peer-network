@@ -183,5 +183,52 @@ public class LeafSetTest {
     assertTrue( set.getClosestLeaf( "AAA0" ).equals( cw ) );
     assertTrue( set.getClosestLeaf( "AAAB" ) == null );
     assertTrue( set.getClosestLeaf( "FFFF" ) == null );
+
+    /** -------------------------------------- */
+
+    // Before: { EC52 <- F414 -> 0685 }
+
+    // After : { EC52 <- 0685 -> 0685 }
+    self = new PeerInformation( "0685", null, 0 );
+    set = new LeafSet( self );
+
+    cw = new PeerInformation( "0685", null, 0 );
+    set.setLeaf( cw, true );
+
+    ccw = new PeerInformation( "EC52", null, 0 );
+    set.setLeaf( ccw, false );
+
+    assertTrue( set.getClosestLeaf( "F4F6" ).equals( ccw ) );
+    assertTrue( set.getClosestLeaf( "0500" ).equals( cw ) );
+    assertTrue( set.getClosestLeaf( "1111" ) == null );
+
+    /** -------------------------------------- */
+    // Before: { EC52 <- F414 -> 0685 }
+
+    // After : { EC52 <- EC52 -> 0685 }
+    self = new PeerInformation( "EC52", null, 0 );
+    set = new LeafSet( self );
+
+    cw = new PeerInformation( "0685", null, 0 );
+    set.setLeaf( cw, true );
+
+    ccw = new PeerInformation( "EC52", null, 0 );
+    set.setLeaf( ccw, false );
+
+    assertTrue( set.getClosestLeaf( "F414" ).equals( ccw ) );
+    assertTrue( set.getClosestLeaf( "0500" ).equals( cw ) );
+    
+    /** -------------------------------------- */
+
+    self = new PeerInformation( "1B3C", null, 0 );
+    set = new LeafSet( self );
+
+    cw = new PeerInformation( "8153", null, 0 );
+    set.setLeaf( cw, true );
+
+    ccw = new PeerInformation( "C99C", null, 0 );
+    set.setLeaf( ccw, false );
+
+    assertTrue( set.getClosestLeaf( "B6DB" ) == null );
   }
 }

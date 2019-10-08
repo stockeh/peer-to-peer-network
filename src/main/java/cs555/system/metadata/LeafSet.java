@@ -91,7 +91,7 @@ public class LeafSet {
 
   /**
    * Check if an integer falls within two end points on a circular ring
-   * of clockwise increasing values.
+   * of clockwise increasing values. The endpoints can not be the same.
    * 
    * @param o 'other' item
    * @param a most clockwise item
@@ -99,7 +99,13 @@ public class LeafSet {
    * @return true if {@code o} is between {@code a} and {@code b}
    */
   public boolean isBetween(int o, int a, int b) {
-    return o > a ^ o < b ^ b < a;
+    if ( a == b )
+    {
+      return false;
+    } else
+    {
+      return o > a ^ o < b ^ b < a;
+    }
   }
 
   /**

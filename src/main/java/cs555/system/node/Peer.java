@@ -221,7 +221,7 @@ public class Peer implements Node {
           .migrateData( this, metadata, executorService, entry, ccw ) );
       try
       {
-        // 3. Update leaf set
+        // 3. Update leaf sets
         ConnectionUtilities
             .establishConnection( this, cw.getHost(), cw.getPort() )
             .getTCPSender().sendData(
@@ -507,6 +507,7 @@ public class Peer implements Node {
                 executorService, entry, request.getPeer() ) );
       }
     }
+    updateRoutingTable( event );
   }
 
   /**
@@ -517,9 +518,11 @@ public class Peer implements Node {
    */
   private synchronized void updateRoutingTable(Event event) {
     PeerInformation peer = ( ( GenericPeerMessage ) event ).getPeer();
-    LOG.info( "Updating Routing Table with " + peer.getIdentifier() );
-    metadata.addPeerToTable( peer );
-    metadata.table().display();
+    if ( !metadata.addPeerToTable( peer ) )
+    {
+      LOG.info( "Updating Routing Table with " + peer.getIdentifier() );
+      metadata.table().display();
+    }
   }
 
   /**
@@ -688,12 +691,9 @@ public class Peer implements Node {
    * </p>
    * 
    * @param joinRequest
-   * @param data
-   * @param processed
    * 
    */
-  private void constructLeafSet(JoinNetwork joinRequest, byte[] data,
-      Set<PeerInformation> processed) {
+  private void constructLeafSet(JoinNetwork joinRequest) {
     PeerInformation cw = joinRequest.getCW(), ccw = joinRequest.getCCW();
     try
     {
@@ -706,10 +706,6 @@ public class Peer implements Node {
       request.setFlag( Constants.COUNTER_CLOCKWISE );
       LOG.debug( "Sending Data to: " + cw.toString() );
       connection.getTCPSender().sendData( request.getBytes() );
-      if ( !processed.contains( cw ) )
-      {
-        connection.getTCPSender().sendData( data );
-      }
 
       connection = connections.cacheConnection( this, ccw, false );
       metadata.leaf().setLeaf( ccw, Constants.COUNTER_CLOCKWISE );
@@ -717,10 +713,7 @@ public class Peer implements Node {
       request.setFlag( Constants.CLOCKWISE );
       LOG.debug( "Sending Data to: " + ccw.toString() );
       connection.getTCPSender().sendData( request.getBytes() );
-      if ( !processed.contains( ccw ) )
-      {
-        connection.getTCPSender().sendData( data );
-      }
+
     } catch ( IOException e )
     {
       LOG.error( "Unable to send leaf set request to peers. " + e.toString() );
@@ -762,6 +755,8 @@ public class Peer implements Node {
     }
     Set<PeerInformation> processed = new HashSet<>();
     processed.add( metadata.self() );
+    processed.add( request.getCW() );
+    processed.add( request.getCCW() );
     Stream.of( metadata.table().getTable() ).flatMap( Stream::of )
         .forEach( peer ->
         {
@@ -782,7 +777,7 @@ public class Peer implements Node {
             processed.add( peer );
           }
         } );
-    constructLeafSet( request, data, processed );
+    constructLeafSet( request );
     connections.closeCachedConnections();
 
     metadata.addSelfToTable();

@@ -203,9 +203,9 @@ public class RoutingTable {
           sb.append( "null" );
         } else
         {
-          // sb.append( String.format( "%4s",
-          // peer.getIdentifier().substring( 0, i + 1 ) ) );
-          sb.append( String.format( "%4s", peer.getIdentifier() ) );
+          sb.append( String.format( "%4s",
+              peer.getIdentifier().substring( 0, i + 1 ) ) );
+          // sb.append( String.format( "%4s", peer.getIdentifier() ) );
         }
         sb.append( " | " );
       }
