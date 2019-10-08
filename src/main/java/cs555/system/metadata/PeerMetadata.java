@@ -140,7 +140,7 @@ public class PeerMetadata {
    * </p>
    * 
    */
-  public void addSelfToTable() {
+  public synchronized void addSelfToTable() {
     for ( int i = 0; i < Constants.NUMBER_OF_ROWS; i++ )
     {
       table.addPeerToTable( self, i );
@@ -154,7 +154,7 @@ public class PeerMetadata {
    * @return true if the DHT already contained the peer, false
    *         otherwise.
    */
-  public boolean addPeerToTable(PeerInformation peer) {
+  public synchronized boolean addPeerToTable(PeerInformation peer) {
     boolean contains = false;
     for ( int row = 0; row < Constants.NUMBER_OF_ROWS; ++row )
     {
@@ -180,7 +180,7 @@ public class PeerMetadata {
    * 
    * @param peer to remove, if it exists
    */
-  public boolean removePeerFromTable(PeerInformation peer) {
+  public synchronized boolean removePeerFromTable(PeerInformation peer) {
     boolean show = false;
     for ( int row = 0; row < Constants.NUMBER_OF_ROWS; ++row )
     {

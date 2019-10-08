@@ -80,15 +80,14 @@ public class RoutingTable {
   /**
    * Get the closest peer to the destination
    * 
-   * TODO: SHOULD ROW = 0, STARTING AT THE TOP LEVEL?
-   * 
+   * @param self
    * @param destination
-   * @param row
-   * @param destCol
    * @return
    */
   public PeerInformation closest(PeerInformation self,
-      PeerInformation destination, int row) {
+      PeerInformation destination) {
+
+    int row = 0;
     int destCol =
         Character.digit( destination.getIdentifier().charAt( row ), 16 );
 
@@ -96,15 +95,22 @@ public class RoutingTable {
     int diff = Integer.MAX_VALUE, other, temp_diff;
     PeerInformation closest = null, temp;
 
+    boolean direction = false;
     if ( ( temp = this.getTableIndex( row, destCol ) ) != null )
     {
       other = Integer.parseInt( temp.getIdentifier(), 16 );
       diff = Math.abs( other - dest );
       closest = temp;
+      if ( dest > other )
+      {
+        direction = Constants.COUNTER_CLOCKWISE;
+      } else
+      {
+        direction = Constants.CLOCKWISE;
+      }
     }
 
-    boolean direction = Constants.CLOCKWISE;
-
+    boolean first = true;
     for ( int i = 1; i < 16; ++i )
     {
       // clockwise
@@ -119,6 +125,11 @@ public class RoutingTable {
           diff = temp_diff;
           closest = temp;
         }
+        if ( temp.equals( self ) && first )
+        {
+          first = false;
+          direction = Constants.CLOCKWISE;
+        }
       }
       // counter-clockwise
       col = ( destCol - i ) & 0xF;
@@ -131,53 +142,29 @@ public class RoutingTable {
         {
           diff = temp_diff;
           closest = temp;
+        }
+        if ( temp.equals( self ) && first )
+        {
+          first = false;
           direction = Constants.COUNTER_CLOCKWISE;
         }
       }
     }
-    if ( !closest.equals( self ) )
+    for ( int r = row + 1; r < Constants.NUMBER_OF_ROWS; ++r )
     {
-      return closest;
-
-    } else
-    { // the self is closest, but the destination falls outside the leaf set
-      int end = direction == Constants.CLOCKWISE ? 0 : 15;
-
-      for ( int r = row + 1; r < Constants.NUMBER_OF_ROWS; ++r )
+      for ( int col = 0; col < Constants.IDENTIFIER_BIT_LENGTH; ++col )
       {
-        int start = Character.digit( self.getIdentifier().charAt( r ), 16 );
-
-        if ( direction == Constants.CLOCKWISE )
+        temp = this.getTableIndex( r, col );
+        if ( temp != null )
         {
-          for ( int col = start - 1; col >= end; col-- )
+          other = Integer.parseInt( temp.getIdentifier(), 16 );
+          temp_diff =
+              direction == Constants.CLOCKWISE ? ( other - dest ) & 0xFFFF
+                  : ( dest - other ) & 0xFFFF;
+          if ( temp_diff < diff )
           {
-            temp = this.getTableIndex( r, col );
-            if ( temp != null )
-            {
-              other = Integer.parseInt( temp.getIdentifier(), 16 );
-              temp_diff = ( other - dest ) & 0xFFFF;
-              if ( temp_diff < diff )
-              {
-                diff = temp_diff;
-                closest = temp;
-              }
-            }
-          }
-        } else
-        {
-          for ( int col = start + 1; col <= end; col++ )
-          {
-            temp = this.getTableIndex( r, col );
-            if ( temp != null )
-            {
-              other = Integer.parseInt( temp.getIdentifier(), 16 );
-              temp_diff = ( dest - other ) & 0xFFFF;
-              if ( temp_diff < diff )
-              {
-                diff = temp_diff;
-                closest = temp;
-              }
-            }
+            diff = temp_diff;
+            closest = temp;
           }
         }
       }
@@ -203,9 +190,9 @@ public class RoutingTable {
           sb.append( "null" );
         } else
         {
-          sb.append( String.format( "%4s",
-              peer.getIdentifier().substring( 0, i + 1 ) ) );
-          // sb.append( String.format( "%4s", peer.getIdentifier() ) );
+          // sb.append( String.format( "%4s",
+          // peer.getIdentifier().substring( 0, i + 1 ) ) );
+          sb.append( String.format( "%4s", peer.getIdentifier() ) );
         }
         sb.append( " | " );
       }

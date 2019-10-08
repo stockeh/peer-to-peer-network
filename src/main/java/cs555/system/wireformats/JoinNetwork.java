@@ -34,6 +34,8 @@ public class JoinNetwork implements Event {
 
   private short row;
 
+  private boolean canAddRow;
+
   /**
    * Default constructor -
    * 
@@ -44,6 +46,7 @@ public class JoinNetwork implements Event {
     this.table = new PeerInformation[ Constants.NUMBER_OF_ROWS ][ 16 ];
     this.networkTraceIdentifiers = new LinkedHashSet<>();
     this.row = 0;
+    this.canAddRow = true;
   }
 
   /**
@@ -101,6 +104,8 @@ public class JoinNetwork implements Event {
 
     this.row = din.readShort();
 
+    this.canAddRow = din.readBoolean();
+
     inputStream.close();
     din.close();
   }
@@ -133,6 +138,10 @@ public class JoinNetwork implements Event {
     return row;
   }
 
+  public boolean canAddRow() {
+    return canAddRow;
+  }
+
   public void setCW(PeerInformation cw) {
     this.cw = cw;
   }
@@ -155,6 +164,10 @@ public class JoinNetwork implements Event {
 
   public void incrementRow() {
     ++row;
+  }
+
+  public void setCanAddRow(boolean canAddRow) {
+    this.canAddRow = canAddRow;
   }
 
   /**
@@ -212,6 +225,8 @@ public class JoinNetwork implements Event {
     }
 
     dout.writeShort( row );
+
+    dout.writeBoolean( canAddRow );
 
     dout.flush();
     marshalledBytes = outputStream.toByteArray();

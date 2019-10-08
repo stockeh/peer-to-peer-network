@@ -152,6 +152,7 @@ public class LeafSet {
    * Convert the leaf set to a {@code String}
    * 
    */
+  @Override
   public String toString() {
     return ( new StringBuilder( "Updated Leaf Set: { " ) )
         .append( ccw.getIdentifier() ).append( " ccw <- " )

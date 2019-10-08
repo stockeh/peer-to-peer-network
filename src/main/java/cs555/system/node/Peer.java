@@ -362,7 +362,7 @@ public class Peer implements Node {
           request.addNetworkTraceRoute( metadata.self().getIdentifier() );
           StringBuilder sb =
               new StringBuilder( "Clockwise Network Route Trace ( " )
-                  .append( request.getNetworkTraceIdentifiers().size() - 1 )
+                  .append( request.getNetworkTraceIdentifiers().size() )
                   .append( " ): " );
           for ( String s : request.getNetworkTraceIdentifiers() )
           {
@@ -484,7 +484,7 @@ public class Peer implements Node {
       } else
       { // 3.
         return metadata.table().closest( metadata.self(),
-            request.getDestination(), row );
+            request.getDestination() );
       }
     }
   }
@@ -572,7 +572,7 @@ public class Peer implements Node {
     int row = request.getRow();
     LOG.debug( "Current row for peer ( " + request.getDestination().toString()
         + " ) is: " + row );
-    if ( row == request.getNetworkTraceIdentifiers().size() )
+    if ( request.canAddRow() )
     {
       request.setTableRow( metadata.table().getTableRow( row ) );
     }
@@ -591,8 +591,7 @@ public class Peer implements Node {
     {
       PeerInformation peer = metadata.table().getTableIndex( row, destCol );
       String next = "";
-      if ( peer != null
-          && row == request.getNetworkTraceIdentifiers().size() - 1 )
+      if ( peer != null && request.canAddRow() )
       {
         LOG.debug( "Forward request to node with matching prefix." ); // A.
         try
@@ -617,8 +616,9 @@ public class Peer implements Node {
         next = peer.getIdentifier();
       } else
       {
+        request.setCanAddRow( false );
         peer = metadata.table().closest( metadata.self(),
-            request.getDestination(), row );
+            request.getDestination() );
         if ( peer.equals( metadata.self() ) )
         {
           LOG.debug( "Found closest node and responding to destination." ); // B.
@@ -770,9 +770,7 @@ public class Peer implements Node {
               connection.getTCPSender().sendData( data );
             } catch ( NumberFormatException | IOException e )
             {
-              LOG.error( "Unable to send message to peer ( " + peer.toString()
-                  + " ) " + e.toString() );
-              e.printStackTrace();
+              metadata.removePeerFromTable( peer );
             }
             processed.add( peer );
           }
