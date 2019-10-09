@@ -32,12 +32,14 @@ function jumpto
 if [ "$1" = "peer" ]
 then
 
-jumpto peer
+    jumpto peer
 
 elif [ "$1" = "store" ]
 then
 
-jumpto store
+    # Launch Store
+    gnome-terminal --working-directory=$DIR --command "java -cp $JAR_PATH cs555.system.node.Store"
+    exit 1
 
 fi
 
@@ -69,11 +71,3 @@ do
     k=`echo $k + 1.50 | bc`
 done
 eval $COMMAND &
-
-sleep 1
-
-store: 
-
-# Launch Store
-
-gnome-terminal --geometry=160x50 -t "Store" -e "ssh -t $(prop 'store.host') cd '$DIR'; 'java -cp $JAR_PATH cs555.system.node.Store; bash;'"

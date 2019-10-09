@@ -17,6 +17,13 @@ import cs555.system.wireformats.GenericMessage;
 import cs555.system.wireformats.GenericPeerMessage;
 import cs555.system.wireformats.Protocol;
 
+/**
+ * General utilities for writing and reading data content on the
+ * peers.
+ * 
+ * @author stock
+ *
+ */
 public class FileUtilities {
 
   private static final Logger LOG = Logger.getInstance();

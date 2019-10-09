@@ -47,7 +47,7 @@ public class StoreMetadata {
    * @param identifier
    * @param localPath
    * @param fileSystemPath
-   * @return 
+   * @return
    */
   public PeerInformation addDataItem(String identifier, Path localPath,
       String fileSystemPath) {
@@ -85,6 +85,14 @@ public class StoreMetadata {
 
   /**
    * 
+   * @return the number of items in the Store
+   */
+  public int numberOfItems() {
+    return items.size();
+  }
+
+  /**
+   * 
    * @author stock
    *
    */
@@ -108,8 +116,8 @@ public class StoreMetadata {
       this.fileSystemPath =
           ( new StringBuilder( fileSystemPath.startsWith( File.separator )
               ? fileSystemPath.substring( 1 )
-              : fileSystemPath ) ).append( Constants.SEPERATOR ).append( identifier )
-                  .toString();
+              : fileSystemPath ) ).append( Constants.SEPERATOR )
+                  .append( identifier ).toString();
     }
 
     /**

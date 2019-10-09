@@ -24,7 +24,7 @@ public class RoutingTableTest {
 
     metadata.setIdentifier( "1234" );
     metadata.addSelfToTable();
-    t.display();
+    // t.display();
 
     assertEquals( c,
         t.closest( metadata.self(), new PeerInformation( "BBBB", null, 0 ) ) );
@@ -47,7 +47,7 @@ public class RoutingTableTest {
 
     metadata.setIdentifier( "1111" );
     metadata.addSelfToTable();
-    t.display();
+    // t.display();
 
     assertEquals( a,
         t.closest( metadata.self(), new PeerInformation( "1E47", null, 0 ) ) );
@@ -82,7 +82,7 @@ public class RoutingTableTest {
 
     metadata.setIdentifier( "4142" );
     metadata.addSelfToTable();
-    t.display();
+    // t.display();
 
     assertEquals( k,
         t.closest( metadata.self(), new PeerInformation( "5F0C", null, 0 ) ) );

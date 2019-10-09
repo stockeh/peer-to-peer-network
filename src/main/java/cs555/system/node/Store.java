@@ -54,6 +54,8 @@ public class Store implements Node {
 
   private final ExecutorService executorService;
 
+  private final Object lock;
+
   /**
    * Default constructor - creates a new peer tying the <b>host:port</b>
    * combination for the node as the identifier for itself.
@@ -64,6 +66,7 @@ public class Store implements Node {
   private Store(String host, int port) {
     this.metadata = new StoreMetadata( host, port );
     this.executorService = Executors.newCachedThreadPool();
+    this.lock = new Object();
   }
 
   /**
@@ -71,8 +74,9 @@ public class Store implements Node {
    * into the peer network.
    *
    * @param args
+   * @throws InterruptedException
    */
-  public static void main(String[] args) {
+  public static void main(String[] args) throws InterruptedException {
     LOG.info( "Store node starting up at: " + new Date() );
     try ( ServerSocket serverSocket = new ServerSocket( 0 ) )
     {
@@ -89,6 +93,7 @@ public class Store implements Node {
       } else
       {
         node.execute( args );
+        System.exit( 0 );
       }
     } catch ( IOException e )
     {
@@ -176,11 +181,20 @@ public class Store implements Node {
     }
     metadata.setDataTransferType( StoreMetadata.READ );
 
-    String fileSystemPath = input[ 1 ];
-    Path localPath = Paths.get( input[ 2 ] + fileSystemPath.substring(
+    // start with '/'
+    String fileSystemPath = input[ 1 ].startsWith( File.separator ) ? input[ 1 ]
+        : File.separator + input[ 1 ];
+    LOG.info( "HERE: " + fileSystemPath );
+    // end with '/'
+    String lp =
+        input[ 2 ].charAt( input[ 2 ].length() - 1 ) == File.separatorChar
+            ? input[ 2 ]
+            : input[ 2 ] + File.separator;
+    Path localPath = Paths.get( lp + fileSystemPath.substring(
         fileSystemPath.lastIndexOf( File.separator ) + 1,
         fileSystemPath.length() ) );
     discover( localPath, fileSystemPath );
+    this.await();
   }
 
   /**
@@ -237,16 +251,33 @@ public class Store implements Node {
    * @param input
    */
   public void addFile(Path path, String[] input) {
-    if ( Files.exists( path ) )
+    if ( !Files.isDirectory( path ) )
     {
+      LOG.debug( "PATH: " + path.toAbsolutePath().toString() );
       String fileSystemPath = input[ 2 ].endsWith( File.separator ) ? input[ 2 ]
           : input[ 2 ] + File.separator;
       fileSystemPath += path.getFileName().toString();
       discover( path, fileSystemPath );
-    } else
+      this.await();
+    }
+  }
+
+  /**
+   * Wait for response back from server before proceeding.
+   * 
+   */
+  public void await() {
+    synchronized ( lock )
     {
-      // TODO: catch exception?
-      LOG.error( path.toString() + " does not exist!" );
+      try
+      {
+        lock.wait();
+      } catch ( InterruptedException e )
+      {
+        LOG.error( "Unable to wait before sending next file in directory. "
+            + e.toString() );
+        e.printStackTrace();
+      }
     }
   }
 
@@ -277,8 +308,9 @@ public class Store implements Node {
               .getBytes() );
     } catch ( IOException e )
     {
-      LOG.error( "Unable to send message to Discovery. " + e.toString() );
-      e.printStackTrace();
+      LOG.error(
+          "Unable to send message to Discovery. Exiting. " + e.toString() );
+      System.exit( 1 );
     }
   }
 
@@ -329,7 +361,7 @@ public class Store implements Node {
     if ( data == null )
     {
       sb.append( "NOT successful!" );
-      LOG.info( sb.toString() );
+      LOG.error( sb.toString() );
     } else
     {
       sb.append( "successful!" );
@@ -344,6 +376,10 @@ public class Store implements Node {
         LOG.error( "Unable to save " + fs + " to disk. " + e.toString() );
         e.printStackTrace();
       }
+    }
+    synchronized ( lock )
+    {
+      lock.notify();
     }
   }
 
@@ -362,14 +398,21 @@ public class Store implements Node {
     StringBuilder sb =
         ( new StringBuilder() ).append( "The write request to peer ( " )
             .append( response.getPeer().toString() ).append( ") for " )
-            .append( message[ 0 ] ).append( " " ).append( message[ 1 ] )
+            .append( message[ 0 ] ).append( " | " ).append( message[ 1 ] )
             .append( " was " );
     if ( response.getFlag() == Constants.FAILURE )
     {
-      sb.append( "NOT " );
+      sb.append( "NOT successful!" );
+      LOG.error( sb.toString() );
+    } else
+    {
+      sb.append( "successful!" );
+      LOG.info( sb.toString() );
     }
-    sb.append( "successful!" );
-    LOG.info( sb.toString() );
+    synchronized ( lock )
+    {
+      lock.notify();
+    }
   }
 
   /**
@@ -395,7 +438,6 @@ public class Store implements Node {
       if ( metadata.getDataTransferType() == StoreMetadata.WRITE )
       {
         byte[] content = Files.readAllBytes( data.getLocalPath() );
-        LOG.debug( "File System Path: " + data.getFileSystemPath() );
         connection.getTCPSender()
             .sendData( ( new DataTransfer( Protocol.STORE_DATA_REQUEST, content,
                 data.getFileSystemPath() ) ).getBytes() );
@@ -466,7 +508,7 @@ public class Store implements Node {
         .append( " application was initialized \n" );
 
     sb.append( "\n\t" ).append( EXIT )
-        .append( "\t: gracefully shutdown the application.\n" );
+        .append( "\t: gracefully shutdown the application\n" );
 
     System.out.println( sb.toString() );
   }

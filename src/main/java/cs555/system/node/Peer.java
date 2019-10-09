@@ -85,6 +85,7 @@ public class Peer implements Node {
     {
       Peer node = new Peer( InetAddress.getLocalHost().getHostName(),
           serverSocket.getLocalPort() );
+      
       LOG.info( "Peer node starting up at: " + new Date() + ", on "
           + node.metadata.self().getConnection() );
 
