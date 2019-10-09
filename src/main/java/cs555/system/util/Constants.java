@@ -21,4 +21,6 @@ public interface Constants {
   final int NUMBER_OF_ROWS = IDENTIFIER_BIT_LENGTH / 4;
 
   final int LEAF_SET_SIZE = 2;
+
+  final String SEPERATOR = ">";
 }

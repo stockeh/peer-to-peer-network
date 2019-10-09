@@ -1,6 +1,7 @@
 package cs555.system.metadata;
 
 import cs555.system.util.Constants;
+import cs555.system.util.Properties;
 
 /**
  * Container for the Distributed Hash Table (DHT) and all the helper
@@ -179,7 +180,7 @@ public class RoutingTable {
   public void reset() {
     this.table = new PeerInformation[ Constants.NUMBER_OF_ROWS ][ 16 ];
   }
-  
+
   /**
    * Print the DHT to the console in a readable format.
    * 
@@ -198,9 +199,14 @@ public class RoutingTable {
           sb.append( "null" );
         } else
         {
-          // sb.append( String.format( "%4s",
-          // peer.getIdentifier().substring( 0, i + 1 ) ) );
-          sb.append( String.format( "%4s", peer.getIdentifier() ) );
+          if ( Properties.SYSTEM_LOG_LEVEL.contentEquals( "INFO" ) )
+          {
+            sb.append( String.format( "%4s",
+                peer.getIdentifier().substring( 0, i + 1 ) ) );
+          } else
+          {
+            sb.append( String.format( "%4s", peer.getIdentifier() ) );
+          }
         }
         sb.append( " | " );
       }

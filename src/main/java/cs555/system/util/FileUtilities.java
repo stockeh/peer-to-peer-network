@@ -17,6 +17,13 @@ import cs555.system.wireformats.GenericMessage;
 import cs555.system.wireformats.GenericPeerMessage;
 import cs555.system.wireformats.Protocol;
 
+/**
+ * General utilities for writing and reading data content on the
+ * peers.
+ * 
+ * @author stock
+ *
+ */
 public class FileUtilities {
 
   private static final Logger LOG = Logger.getInstance();
@@ -37,7 +44,7 @@ public class FileUtilities {
   public static void write(PeerMetadata metadata, Event event,
       TCPConnection connection) {
     DataTransfer request = ( DataTransfer ) event;
-    String[] descriptor = request.getDescriptor().split( "\t" );
+    String[] descriptor = request.getDescriptor().split( Constants.SEPERATOR );
     metadata.addFile( descriptor[ 0 ], descriptor[ 1 ] );
 
     Path path = constructPath( metadata, descriptor[ 0 ] );
@@ -58,7 +65,8 @@ public class FileUtilities {
     {
       connection.getTCPSender()
           .sendData( ( new GenericPeerMessage( Protocol.STORE_DATA_RESPONSE,
-              metadata.self(), success ) ).getBytes() );
+              metadata.self(), request.getDescriptor(), success ) )
+                  .getBytes() );
     } catch ( IOException e )
     {
       LOG.error( "Unable to send message to store. " + e.toString() );
@@ -81,9 +89,9 @@ public class FileUtilities {
   public static void read(PeerMetadata metadata, Event event,
       TCPConnection connection) {
     GenericMessage request = ( GenericMessage ) event;
-
-    Path path =
-        constructPath( metadata, request.getMessage().split( "\t" )[ 0 ] );
+    // fs path ? content id ? local path
+    String[] message = request.getMessage().split( Constants.SEPERATOR );
+    Path path = constructPath( metadata, message[ 0 ] );
 
     byte[] data = null;
     try
@@ -99,7 +107,9 @@ public class FileUtilities {
     {
       connection.getTCPSender()
           .sendData( ( new DataTransfer( Protocol.READ_DATA_RESPONSE, data,
-              metadata.self().toString() ) ).getBytes() );
+              ( new StringBuilder( metadata.self().toString() ) )
+                  .append( Constants.SEPERATOR ).append( request.getMessage() )
+                  .toString() ) ).getBytes() );
     } catch ( IOException e )
     {
       LOG.error( "Unable to send message to store. " + e.toString() );
@@ -137,7 +147,7 @@ public class FileUtilities {
         connection.submitTo( executorService );
         connection.getTCPSender()
             .sendData( ( new DataTransfer( Protocol.STORE_DATA_REQUEST, data,
-                k + "\t" + v ) ).getBytes() );
+                k + Constants.SEPERATOR + v ) ).getBytes() );
         LOG.info( ( new StringBuilder() ).append( "The file " )
             .append( File.separator ).append( k )
             .append( " is being migrated to " ).append( leaf.toString() )

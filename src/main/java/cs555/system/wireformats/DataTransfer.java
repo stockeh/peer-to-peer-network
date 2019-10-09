@@ -57,7 +57,7 @@ public class DataTransfer implements Event {
     int len = din.readInt();
     byte[] pathname = new byte[ len ];
     din.readFully( pathname );
-    descriptor = new String( pathname );
+    this.descriptor = new String( pathname );
 
     inputStream.close();
     din.close();

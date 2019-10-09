@@ -57,10 +57,10 @@ public class EventFactory {
       case Protocol.FORWARD_PEER_IDENTIFIER :
       case Protocol.FORWARD_LEAF_IDENTIFIER :
       case Protocol.STORE_DATA_RESPONSE :
+      case Protocol.DISCOVER_NODE_REQUEST :
         return new GenericPeerMessage( marshalledBytes );
 
       case Protocol.IDENTIFIER_COLLISION :
-      case Protocol.DISCOVER_NODE_REQUEST :
       case Protocol.READ_DATA_REQUEST :
       case Protocol.RESET_PEER :
         return new GenericMessage( marshalledBytes );

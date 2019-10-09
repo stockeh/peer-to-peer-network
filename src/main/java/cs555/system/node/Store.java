@@ -13,6 +13,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import cs555.system.metadata.PeerInformation;
 import cs555.system.metadata.StoreMetadata;
+import cs555.system.metadata.StoreMetadata.DataItem;
 import cs555.system.transport.TCPConnection;
 import cs555.system.transport.TCPServerThread;
 import cs555.system.util.ConnectionUtilities;
@@ -53,6 +54,8 @@ public class Store implements Node {
 
   private final ExecutorService executorService;
 
+  private final Object lock;
+
   /**
    * Default constructor - creates a new peer tying the <b>host:port</b>
    * combination for the node as the identifier for itself.
@@ -63,6 +66,7 @@ public class Store implements Node {
   private Store(String host, int port) {
     this.metadata = new StoreMetadata( host, port );
     this.executorService = Executors.newCachedThreadPool();
+    this.lock = new Object();
   }
 
   /**
@@ -70,8 +74,9 @@ public class Store implements Node {
    * into the peer network.
    *
    * @param args
+   * @throws InterruptedException
    */
-  public static void main(String[] args) {
+  public static void main(String[] args) throws InterruptedException {
     LOG.info( "Store node starting up at: " + new Date() );
     try ( ServerSocket serverSocket = new ServerSocket( 0 ) )
     {
@@ -82,7 +87,14 @@ public class Store implements Node {
           new TCPServerThread( node, serverSocket, node.executorService ),
           "Server Thread" ) ).start();
 
-      node.interact();
+      if ( args.length == 0 )
+      {
+        node.interact();
+      } else
+      {
+        node.execute( args );
+        System.exit( 0 );
+      }
     } catch ( IOException e )
     {
       LOG.error(
@@ -107,70 +119,45 @@ public class Store implements Node {
       @SuppressWarnings( "resource" )
       Scanner scan = new Scanner( System.in );
       String[] input = scan.nextLine().toLowerCase().split( "\\s+" );
-      switch ( input[ 0 ] )
-      {
-        case UPLOAD :
-          upload( input );
-          break;
-
-        case GET :
-          get( input );
-          break;
-
-        case "fake" :
-          FAKEUPLOAD( input );
-          break;
-
-        case DIR :
-          LOG.info( "Working Directory: " + System.getProperty( "user.dir" ) );
-          break;
-
-        case EXIT :
-          running = false;
-          break;
-
-        case HELP :
-          displayHelp();
-          break;
-
-        default :
-          LOG.error(
-              "Unable to process. Please enter a valid command! Input 'help'"
-                  + " for options." );
-          break;
-      }
+      running = execute( input );
     }
     System.exit( 0 );
   }
 
-  // TODO: DELETE ME. I AM A FAKE HELPER METHOD.
-  private void FAKEUPLOAD(String[] input) {
-    if ( metadata.transferable() )
+  /**
+   * Commands that can be run from the store.
+   * 
+   * @param input
+   * @return
+   */
+  private boolean execute(String input[]) {
+    switch ( input[ 0 ] )
     {
-      String identifier = input[ 1 ];
-      LOG.info(
-          "Data Has Identifier: " + identifier + ", based off being fake." );
-      metadata.setDataTransferType( StoreMetadata.WRITE );
-      metadata.item().setIdentifier( identifier );
-      metadata.setLocalPath( Paths.get( "data/greta.jpeg" ) );
-      metadata.setFileSystemPath( "greta.jpeg" + "\t" + identifier );
-      try
-      {
-        TCPConnection connection = ConnectionUtilities.establishConnection(
-            this, Properties.DISCOVERY_HOST, Properties.DISCOVERY_PORT );
-        connection.submitTo( executorService );
-        connection.getTCPSender()
-            .sendData( ( new GenericMessage( Protocol.DISCOVER_NODE_REQUEST ) )
-                .getBytes() );
-      } catch ( IOException e )
-      {
-        LOG.error( "Unable to send message to Discovery. " + e.toString() );
-        e.printStackTrace();
-      }
-    } else
-    {
-      LOG.info( "The Store is currently writing a file. Try again shortly." );
+      case UPLOAD :
+        upload( input );
+        break;
+
+      case GET :
+        get( input );
+        break;
+
+      case DIR :
+        LOG.info( "Working Directory: " + System.getProperty( "user.dir" ) );
+        break;
+
+      case EXIT :
+        return false;
+
+      case HELP :
+        displayHelp();
+        break;
+
+      default :
+        LOG.error( "Unable to process. Please enter a valid command! " );
+        displayHelp();
+        break;
     }
+    return true;
   }
 
   /**
@@ -192,21 +179,22 @@ public class Store implements Node {
           + "get /greta.jpeg data/" );
       return;
     }
-    if ( metadata.transferable() )
-    {
-      metadata.setDataTransferType( StoreMetadata.READ );
+    metadata.setDataTransferType( StoreMetadata.READ );
 
-      String fileSystemPath = input[ 1 ];
-      Path localPath = Paths.get( input[ 2 ] + fileSystemPath.substring(
-          fileSystemPath.lastIndexOf( File.separator ) + 1,
-          fileSystemPath.length() ) );
-
-      initTransfer( localPath, fileSystemPath );
-    } else
-    {
-      LOG.info(
-          "The Store is in a non-transferable state. Try again shortly." );
-    }
+    // start with '/'
+    String fileSystemPath = input[ 1 ].startsWith( File.separator ) ? input[ 1 ]
+        : File.separator + input[ 1 ];
+    LOG.info( "HERE: " + fileSystemPath );
+    // end with '/'
+    String lp =
+        input[ 2 ].charAt( input[ 2 ].length() - 1 ) == File.separatorChar
+            ? input[ 2 ]
+            : input[ 2 ] + File.separator;
+    Path localPath = Paths.get( lp + fileSystemPath.substring(
+        fileSystemPath.lastIndexOf( File.separator ) + 1,
+        fileSystemPath.length() ) );
+    discover( localPath, fileSystemPath );
+    this.await();
   }
 
   /**
@@ -234,20 +222,62 @@ public class Store implements Node {
           + "upload data/greta.jpeg /" );
       return;
     }
-    if ( metadata.transferable() )
+    metadata.setDataTransferType( StoreMetadata.WRITE );
+    Path inputPath = Paths.get( input[ 1 ] );
+
+    if ( Files.isDirectory( inputPath ) )
     {
-      metadata.setDataTransferType( StoreMetadata.WRITE );
-      Path localPath = Paths.get( input[ 1 ] );
-
-      String fileSystemPath = input[ 2 ].endsWith( File.separator ) ? input[ 2 ]
-          : input[ 2 ] + File.separator;
-      fileSystemPath += localPath.getFileName().toString();
-
-      initTransfer( localPath, fileSystemPath );
+      try
+      {
+        Files.walk( inputPath ).forEach( path ->
+        {
+          addFile( path, input );
+        } );
+      } catch ( IOException e )
+      {
+        LOG.error( "Failure while traversing directory. " + e.toString() );
+        e.printStackTrace();
+      }
     } else
     {
-      LOG.info(
-          "The Store is in a non-transferable state. Try again shortly." );
+      addFile( Paths.get( input[ 1 ] ), input );
+    }
+  }
+
+  /**
+   * Add individual file to upload
+   * 
+   * @param path
+   * @param input
+   */
+  public void addFile(Path path, String[] input) {
+    if ( !Files.isDirectory( path ) )
+    {
+      LOG.debug( "PATH: " + path.toAbsolutePath().toString() );
+      String fileSystemPath = input[ 2 ].endsWith( File.separator ) ? input[ 2 ]
+          : input[ 2 ] + File.separator;
+      fileSystemPath += path.getFileName().toString();
+      discover( path, fileSystemPath );
+      this.await();
+    }
+  }
+
+  /**
+   * Wait for response back from server before proceeding.
+   * 
+   */
+  public void await() {
+    synchronized ( lock )
+    {
+      try
+      {
+        lock.wait();
+      } catch ( InterruptedException e )
+      {
+        LOG.error( "Unable to wait before sending next file in directory. "
+            + e.toString() );
+        e.printStackTrace();
+      }
     }
   }
 
@@ -259,26 +289,28 @@ public class Store implements Node {
    *        local file system
    * @param fileSystemPath for where the file is to be stored / read
    *        from in the network file system
+   * 
    */
-  private void initTransfer(Path localPath, String fileSystemPath) {
+  private void discover(Path localPath, String fileSystemPath) {
     String identifier =
         IdentifierUtilities.CRC16CCITT( fileSystemPath.getBytes() );
     LOG.info( "Data Has Identifier: " + identifier + ", based off the name "
         + fileSystemPath );
-    metadata.item().setIdentifier( identifier );
-    metadata.setLocalPath( localPath );
-    metadata.setFileSystemPath( fileSystemPath + "\t" + identifier );
+    PeerInformation item =
+        metadata.addDataItem( identifier, localPath, fileSystemPath );
     try
     {
       TCPConnection connection = ConnectionUtilities.establishConnection( this,
           Properties.DISCOVERY_HOST, Properties.DISCOVERY_PORT );
       connection.submitTo( executorService );
       connection.getTCPSender().sendData(
-          ( new GenericMessage( Protocol.DISCOVER_NODE_REQUEST ) ).getBytes() );
+          ( new GenericPeerMessage( Protocol.DISCOVER_NODE_REQUEST, item ) )
+              .getBytes() );
     } catch ( IOException e )
     {
-      LOG.error( "Unable to send message to Discovery. " + e.toString() );
-      e.printStackTrace();
+      LOG.error(
+          "Unable to send message to Discovery. Exiting. " + e.toString() );
+      System.exit( 1 );
     }
   }
 
@@ -319,24 +351,25 @@ public class Store implements Node {
   private void readResponse(Event event, TCPConnection connection) {
     connection.close();
     DataTransfer response = ( DataTransfer ) event;
-
+    // peer information ? fs path ? content id ? local path
+    String[] message = response.getDescriptor().split( Constants.SEPERATOR );
     byte[] data = response.getData();
     StringBuilder sb =
         ( new StringBuilder() ).append( "The read request from peer ( " )
-            .append( response.getDescriptor() ).append( ") for " )
-            .append( metadata.getFileSystemPath() ).append( " was " );
+            .append( message[ 0 ] ).append( ") for " ).append( message[ 1 ] )
+            .append( " " ).append( message[ 2 ] ).append( " was " );
     if ( data == null )
     {
       sb.append( "NOT successful!" );
-      LOG.info( sb.toString() );
+      LOG.error( sb.toString() );
     } else
     {
       sb.append( "successful!" );
       LOG.info( sb.toString() );
-      String fs = metadata.getLocalPath().toAbsolutePath().toString();
+      String fs = message[ 3 ];
       try
       {
-        Files.write( metadata.getLocalPath(), data );
+        Files.write( Paths.get( message[ 3 ] ), data );
         LOG.info( "Finished writing " + fs + " to disk." );
       } catch ( IOException e )
       {
@@ -344,7 +377,10 @@ public class Store implements Node {
         e.printStackTrace();
       }
     }
-    metadata.reset();
+    synchronized ( lock )
+    {
+      lock.notify();
+    }
   }
 
   /**
@@ -357,18 +393,26 @@ public class Store implements Node {
   private void writeResponse(Event event, TCPConnection connection) {
     connection.close();
     GenericPeerMessage response = ( GenericPeerMessage ) event;
-
+    // fs path ? content id ? local path
+    String[] message = response.getMessage().split( Constants.SEPERATOR );
     StringBuilder sb =
         ( new StringBuilder() ).append( "The write request to peer ( " )
             .append( response.getPeer().toString() ).append( ") for " )
-            .append( metadata.getFileSystemPath() ).append( " was " );
+            .append( message[ 0 ] ).append( " | " ).append( message[ 1 ] )
+            .append( " was " );
     if ( response.getFlag() == Constants.FAILURE )
     {
-      sb.append( "NOT " );
+      sb.append( "NOT successful!" );
+      LOG.error( sb.toString() );
+    } else
+    {
+      sb.append( "successful!" );
+      LOG.info( sb.toString() );
     }
-    sb.append( "successful!" );
-    LOG.info( sb.toString() );
-    metadata.reset();
+    synchronized ( lock )
+    {
+      lock.notify();
+    }
   }
 
   /**
@@ -389,26 +433,27 @@ public class Store implements Node {
     LOG.info( sb.toString() );
     try
     {
-      byte[] content;
+      DataItem data =
+          metadata.getDataItem( request.getDestination().getIdentifier() );
       if ( metadata.getDataTransferType() == StoreMetadata.WRITE )
       {
-        content = Files.readAllBytes( metadata.getLocalPath() );
-        LOG.debug( "File System Path: " + metadata.getFileSystemPath() );
+        byte[] content = Files.readAllBytes( data.getLocalPath() );
         connection.getTCPSender()
             .sendData( ( new DataTransfer( Protocol.STORE_DATA_REQUEST, content,
-                metadata.getFileSystemPath() ) ).getBytes() );
+                data.getFileSystemPath() ) ).getBytes() );
       } else
       {
-        connection.getTCPSender()
-            .sendData( ( new GenericMessage( Protocol.READ_DATA_REQUEST,
-                metadata.getFileSystemPath() ) ).getBytes() );
+        // fs path ? content id ? local path
+        String message = data.getFileSystemPath() + Constants.SEPERATOR
+            + data.getLocalPath().toAbsolutePath().toString();
+        connection.getTCPSender().sendData(
+            ( new GenericMessage( Protocol.READ_DATA_REQUEST, message ) )
+                .getBytes() );
       }
     } catch ( IOException e )
     {
       LOG.error( "Unable to upload file " + e.toString() );
-      displayHelp();
       connection.close();
-      metadata.reset();
     }
   }
 
@@ -422,6 +467,11 @@ public class Store implements Node {
   private void dicoverNodeHandler(Event event) {
     DiscoverNodeResponse response = ( DiscoverNodeResponse ) event;
     PeerInformation source = response.getSourceInformation();
+    if ( response.isInitialPeerConnection() )
+    {
+      LOG.error( "There are no peers in the network. Unable to upload files." );
+      return;
+    }
     LOG.info(
         "Connecting to the network through source node: " + source.toString() );
     try
@@ -430,7 +480,7 @@ public class Store implements Node {
           .establishConnection( this, source.getHost(), source.getPort() )
           .getTCPSender()
           .sendData( ( new DiscoverPeerRequest( Protocol.DISCOVER_PEER_REQUEST,
-              metadata.item() ) ).getBytes() );
+              response.getOriginalInformation() ) ).getBytes() );
     } catch ( IOException e )
     {
       LOG.error( "Unable to send message to the source node. " + e.toString() );
@@ -458,7 +508,7 @@ public class Store implements Node {
         .append( " application was initialized \n" );
 
     sb.append( "\n\t" ).append( EXIT )
-        .append( "\t: gracefully shutdown the application.\n" );
+        .append( "\t: gracefully shutdown the application\n" );
 
     System.out.println( sb.toString() );
   }
