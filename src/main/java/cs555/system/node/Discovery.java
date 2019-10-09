@@ -135,7 +135,7 @@ public class Discovery implements Node {
         break;
 
       case Protocol.DISCOVER_NODE_REQUEST :
-        select( connection );
+        select( connection, ( ( GenericPeerMessage ) event ).getPeer() );
         break;
     }
   }
@@ -190,7 +190,7 @@ public class Discovery implements Node {
       }
     } else
     {
-      select( connection );
+      select( connection, peer );
       registeredNodes.add( peer );
       LOG.info( ( new StringBuilder() )
           .append( "New peer has been registered with Discovery: " )
@@ -203,8 +203,10 @@ public class Discovery implements Node {
    * registered nodes.
    * 
    * @param connection
+   * @param peer
    */
-  private synchronized void select(TCPConnection connection) {
+  private synchronized void select(TCPConnection connection,
+      PeerInformation peer) {
     DiscoverNodeResponse response;
     int numberOfNodes = registeredNodes.size();
     if ( numberOfNodes == 0 )
@@ -214,7 +216,7 @@ public class Discovery implements Node {
     {
       int index = random.nextInt( numberOfNodes );
       PeerInformation source = registeredNodes.get( index );
-      response = new DiscoverNodeResponse( source );
+      response = new DiscoverNodeResponse( source, peer );
     }
     try
     {

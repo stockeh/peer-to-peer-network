@@ -26,7 +26,25 @@ public class GenericPeerMessage implements Event {
 
   private PeerInformation peer;
 
+  private String message;
+
   private boolean flag;
+
+  /**
+   * Default constructor - create a new register or unregister message.
+   * 
+   * @param type Specified for use of register or unregister message.
+   * @param peer
+   * @param message
+   * @param flag
+   */
+  public GenericPeerMessage(int type, PeerInformation peer, String message,
+      boolean flag) {
+    this.type = type;
+    this.peer = peer;
+    this.message = message;
+    this.flag = flag;
+  }
 
   /**
    * Default constructor - create a new register or unregister message.
@@ -38,9 +56,10 @@ public class GenericPeerMessage implements Event {
   public GenericPeerMessage(int type, PeerInformation peer, boolean flag) {
     this.type = type;
     this.peer = peer;
+    this.message = "";
     this.flag = flag;
   }
-  
+
   /**
    * Default constructor - create a new register or unregister message.
    * 
@@ -50,6 +69,7 @@ public class GenericPeerMessage implements Event {
   public GenericPeerMessage(int type, PeerInformation peer) {
     this.type = type;
     this.peer = peer;
+    this.message = "";
     this.flag = false;
   }
 
@@ -69,6 +89,11 @@ public class GenericPeerMessage implements Event {
     this.type = din.readInt();
 
     this.peer = MessageUtilities.readPeerInformation( din );
+
+    int len = din.readInt();
+    byte[] msg = new byte[ len ];
+    din.readFully( msg );
+    this.message = new String( msg );
 
     this.flag = din.readBoolean();
 
@@ -90,6 +115,14 @@ public class GenericPeerMessage implements Event {
    */
   public PeerInformation getPeer() {
     return peer;
+  }
+
+  /**
+   * 
+   * @return the content delivered with the message
+   */
+  public String getMessage() {
+    return message;
   }
 
   /**
@@ -147,6 +180,10 @@ public class GenericPeerMessage implements Event {
     dout.writeInt( type );
 
     MessageUtilities.writePeerInformation( dout, peer );
+
+    byte[] msg = message.getBytes();
+    dout.writeInt( msg.length );
+    dout.write( msg );
 
     dout.writeBoolean( flag );
 

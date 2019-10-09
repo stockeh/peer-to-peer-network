@@ -23,15 +23,28 @@ public class DiscoverNodeResponse implements Event {
 
   private PeerInformation source;
 
+  private PeerInformation original;
+
+  /**
+   * Constructor for initial peer
+   */
   public DiscoverNodeResponse() {
     this.type = Protocol.DISCOVER_NODE_RESPONSE;
     this.initialPeerConnection = true;
   }
 
-  public DiscoverNodeResponse(PeerInformation source) {
+  /**
+   * Constructor for normal peer / store response
+   * 
+   * @param source
+   * @param original
+   */
+  public DiscoverNodeResponse(PeerInformation source,
+      PeerInformation original) {
     this.type = Protocol.DISCOVER_NODE_RESPONSE;
     this.initialPeerConnection = false;
     this.source = source;
+    this.original = original;
   }
 
   /**
@@ -54,6 +67,7 @@ public class DiscoverNodeResponse implements Event {
     if ( !initialPeerConnection )
     {
       this.source = MessageUtilities.readPeerInformation( din );
+      this.original = MessageUtilities.readPeerInformation( din );
     }
     inputStream.close();
     din.close();
@@ -73,6 +87,14 @@ public class DiscoverNodeResponse implements Event {
    */
   public PeerInformation getSourceInformation() {
     return this.source;
+  }
+
+  /**
+   * 
+   * @return the original peer that sent a request to Discovery
+   */
+  public PeerInformation getOriginalInformation() {
+    return this.original;
   }
 
   /**
@@ -100,6 +122,7 @@ public class DiscoverNodeResponse implements Event {
     if ( !initialPeerConnection )
     {
       MessageUtilities.writePeerInformation( dout, source );
+      MessageUtilities.writePeerInformation( dout, original );
     }
     dout.flush();
     marshalledBytes = outputStream.toByteArray();
