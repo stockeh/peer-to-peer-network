@@ -554,59 +554,32 @@ public class Peer implements Node {
    */
   private synchronized void constructDHT(JoinNetwork request) {
 
+    int modifiedLcp = IdentifierUtilities.longestCommonPrefixLength(
+        metadata.self().getIdentifier(),
+        request.getDestination().getIdentifier() ) + 1;
     int row = request.getRow();
-    LOG.debug( "Current row for peer ( " + request.getDestination().toString()
-        + " ) is: " + row );
-    
-    if ( request.canAddRow() )
+
+    if ( modifiedLcp > row )
     {
-      request.setTableRow( metadata.table().getTableRow( row ) );
+      for ( int i = 0; i < modifiedLcp - row; ++i )
+      {
+        request.incrementRow();
+        request.setTableRow( metadata.table().getTableRow( request.getRow() ) );
+      }
     }
     request.addNetworkTraceRoute( metadata.self().getIdentifier() );
 
-    int selfCol =
-        Character.digit( metadata.self().getIdentifier().charAt( row ), 16 );
-    int destCol = Character
-        .digit( request.getDestination().getIdentifier().charAt( row ), 16 );
-
-    if ( selfCol == destCol )
+    String next = "";
+    PeerInformation closest = metadata.leaf()
+        .getClosestLeaf( request.getDestination().getIdentifier() );
+    try
     {
-      request.incrementRow();
-      constructDHT( request );
-    } else
-    {
-      PeerInformation peer = metadata.table().getTableIndex( row, destCol );
-      String next = "";
-      if ( peer != null && request.canAddRow() )
-      {
-        LOG.debug( "Forward request to node with matching prefix." ); // A.
-        try
-        {
-          TCPConnection intermediate = ConnectionUtilities
-              .establishConnection( this, peer.getHost(), peer.getPort() );
-          request.incrementRow();
-          intermediate.getTCPSender().sendData( request.getBytes() );
-        } catch ( IOException e )
-        {
-          if ( metadata.removePeerFromTable( peer ) )
-          {
-            LOG.info(
-                ( new StringBuilder( "The peer ( " ).append( peer.toString() )
-                    .append( " ) was removed from the routing table." )
-                    .toString() ) );
-            metadata.table().display();
-          }
-          constructDHT( request );
-          return;
-        }
-        next = peer.getIdentifier();
-      } else
-      {
-        request.setCanAddRow( false );
-        peer =
-            IdentifierUtilities.closest( metadata, request.getDestination() );
+      TCPConnection connection;
 
-        if ( peer.equals( metadata.self() ) )
+      // 1. check within bounds of leafset
+      if ( closest != null )
+      {
+        if ( closest.equals( metadata.self() ) )
         {
           LOG.debug( "Found closest node and responding to destination." ); // B.
           if ( !metadata.leaf().isPopulated() )
@@ -626,44 +599,40 @@ public class Peer implements Node {
               request.setCCW( metadata.leaf().getCCW() );
             }
           }
-          try
-          {
-            TCPConnection destination = ConnectionUtilities.establishConnection(
-                this, request.getDestination().getHost(),
-                request.getDestination().getPort() );
-            destination.getTCPSender().sendData( request.getBytes() );
-          } catch ( IOException e )
-          {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-          }
+          connection = ConnectionUtilities.establishConnection( this,
+              request.getDestination().getHost(),
+              request.getDestination().getPort() );
           next = request.getDestination().getIdentifier();
         } else
         {
-          LOG.debug( "Forward request to intermediary closer node in DHT." ); // C.
-          try
-          {
-            TCPConnection intermediate = ConnectionUtilities
-                .establishConnection( this, peer.getHost(), peer.getPort() );
-            intermediate.getTCPSender().sendData( request.getBytes() );
-          } catch ( IOException e )
-          {
-            if ( metadata.removePeerFromTable( peer ) )
-            {
-              LOG.info(
-                  ( new StringBuilder( "The peer ( " ).append( peer.toString() )
-                      .append( " ) was removed from the routing table." )
-                      .toString() ) );
-              metadata.table().display();
-            }
-            constructDHT( request );
-            return;
-          }
-          next = peer.getIdentifier();
+          connection = ConnectionUtilities.establishConnection( this,
+              closest.getHost(), closest.getPort() );
+          next = closest.getIdentifier();
         }
+      } else
+      {
+        // 2. check in DHT and leaves
+        closest =
+            IdentifierUtilities.closest( metadata, request.getDestination() );
+        connection = ConnectionUtilities.establishConnection( this,
+            closest.getHost(), closest.getPort() );
+        next = closest.getIdentifier();
       }
+      connection.getTCPSender().sendData( request.getBytes() );
       LOG.info( request.toString() + next );
+    } catch ( IOException e )
+    {
+      if ( metadata.removePeerFromTable( closest ) )
+      {
+        LOG.info( ( new StringBuilder( "The peer ( " )
+            .append( closest.toString() )
+            .append( " ) was removed from the routing table." ).toString() ) );
+        metadata.table().display();
+      }
+      constructDHT( request );
+      return;
     }
+    LOG.info( request.toString() + next );
   }
 
   /**
