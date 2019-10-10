@@ -563,8 +563,9 @@ public class Peer implements Node {
     {
       for ( int i = 0; i < modifiedLcp - row; ++i )
       {
-        request.incrementRow();
         request.setTableRow( metadata.table().getTableRow( request.getRow() ) );
+        request.incrementRow();
+
       }
     }
     request.addNetworkTraceRoute( metadata.self().getIdentifier() );
@@ -632,7 +633,6 @@ public class Peer implements Node {
       constructDHT( request );
       return;
     }
-    LOG.info( request.toString() + next );
   }
 
   /**
