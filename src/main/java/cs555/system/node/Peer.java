@@ -557,6 +557,7 @@ public class Peer implements Node {
     int row = request.getRow();
     LOG.debug( "Current row for peer ( " + request.getDestination().toString()
         + " ) is: " + row );
+    
     if ( request.canAddRow() )
     {
       request.setTableRow( metadata.table().getTableRow( row ) );
