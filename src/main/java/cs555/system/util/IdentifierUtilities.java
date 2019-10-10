@@ -1,6 +1,8 @@
 package cs555.system.util;
 
 import java.nio.ByteBuffer;
+import cs555.system.metadata.PeerInformation;
+import cs555.system.metadata.PeerMetadata;
 
 /**
  * Utilities used for obtaining a hexadecimal or byte representation
@@ -106,5 +108,144 @@ public class IdentifierUtilities {
     int a = Character.digit( source.charAt( index ), 16 );
     int b = Character.digit( item.charAt( index ), 16 );
     return ( a - b == 0 ) ? 0 : b;
+  }
+
+  /**
+   * Assumes the two {@code String}s are the same length.
+   * 
+   * @param a
+   * @param b
+   * @return
+   */
+  public static int longestCommonPrefixLength(String a, String b) {
+    int longest = 0;
+    for ( int i = 0; i < a.length(); ++i )
+    {
+      if ( a.charAt( i ) == b.charAt( i ) )
+      {
+        ++longest;
+      } else
+      {
+        break;
+      }
+    }
+    return longest;
+  }
+
+  /**
+   * Get the closest peer to the destination
+   *
+   * @param self
+   * @param destination
+   * @return
+   */
+  public static PeerInformation closest(PeerMetadata metadata,
+      PeerInformation destination) {
+
+    int row = 0;
+    int destCol =
+        Character.digit( destination.getIdentifier().charAt( row ), 16 );
+
+    int dest = Integer.parseInt( destination.getIdentifier(), 16 );
+    int diff = Integer.MAX_VALUE, other, temp_diff;
+    PeerInformation closest = null, temp;
+
+    // 1. check position of destination in self table
+    boolean direction = false;
+    if ( ( temp = metadata.table().getTableIndex( row, destCol ) ) != null )
+    {
+      other = Integer.parseInt( temp.getIdentifier(), 16 );
+      diff = Math.abs( other - dest );
+      closest = temp;
+      if ( dest > other )
+      {
+        direction = Constants.COUNTER_CLOCKWISE;
+      } else
+      {
+        direction = Constants.CLOCKWISE;
+      }
+    }
+
+    // 2. check first row
+    boolean first = true;
+    for ( int i = 1; i < 16; ++i )
+    {
+      // clockwise
+      int col = ( destCol + i ) & 0xF;
+      temp = metadata.table().getTableIndex( row, col );
+      if ( temp != null )
+      {
+        other = Integer.parseInt( temp.getIdentifier(), 16 );
+        temp_diff = ( other - dest ) & 0xFFFF;
+        if ( temp_diff < diff )
+        {
+          diff = temp_diff;
+          closest = temp;
+        }
+        if ( temp.equals( metadata.self() ) && first )
+        {
+          first = false;
+          direction = Constants.CLOCKWISE;
+        }
+      }
+      // counter-clockwise
+      col = ( destCol - i ) & 0xF;
+      temp = metadata.table().getTableIndex( row, col );
+      if ( temp != null )
+      {
+        other = Integer.parseInt( temp.getIdentifier(), 16 );
+        temp_diff = ( dest - other ) & 0xFFFF;
+        if ( temp_diff < diff )
+        {
+          diff = temp_diff;
+          closest = temp;
+        }
+        if ( temp.equals( metadata.self() ) && first )
+        {
+          first = false;
+          direction = Constants.COUNTER_CLOCKWISE;
+        }
+      }
+    }
+    // 3. check rest of table
+    for ( int r = row + 1; r < Constants.NUMBER_OF_ROWS; ++r )
+    {
+      for ( int col = 0; col < Constants.IDENTIFIER_BIT_LENGTH; ++col )
+      {
+        temp = metadata.table().getTableIndex( r, col );
+        if ( temp != null )
+        {
+          other = Integer.parseInt( temp.getIdentifier(), 16 );
+          temp_diff =
+              direction == Constants.CLOCKWISE ? ( other - dest ) & 0xFFFF
+                  : ( dest - other ) & 0xFFFF;
+          if ( temp_diff < diff )
+          {
+            diff = temp_diff;
+            closest = temp;
+          }
+        }
+      }
+    }
+    // 4. compare closest in table with leafset. Assumes already checked
+    // region within leafset
+    if ( metadata.leaf().isPopulated() )
+    {
+      other = Integer.parseInt( metadata.leaf().getCW().getIdentifier(), 16 );
+      temp_diff = ( dest - other ) & 0xFFFF;
+      if ( temp_diff < diff )
+      {
+        diff = temp_diff;
+        closest = metadata.leaf().getCW();
+      }
+      other = Integer.parseInt( metadata.leaf().getCCW().getIdentifier(), 16 );
+      temp_diff = ( other - dest ) & 0xFFFF;
+      if ( temp_diff < diff )
+      {
+        diff = temp_diff;
+        closest = metadata.leaf().getCCW();
+      }
+    }
+    return closest;
   }
 }

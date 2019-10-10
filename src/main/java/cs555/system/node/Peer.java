@@ -85,7 +85,7 @@ public class Peer implements Node {
     {
       Peer node = new Peer( InetAddress.getLocalHost().getHostName(),
           serverSocket.getLocalPort() );
-      
+
       LOG.info( "Peer node starting up at: " + new Date() + ", on "
           + node.metadata.self().getConnection() );
 
@@ -320,7 +320,7 @@ public class Peer implements Node {
   }
 
   /**
-   * Reset the peer since it the last in the network
+   * Reset the peer since it the last and only in the network
    * 
    * @param connection
    */
@@ -433,6 +433,7 @@ public class Peer implements Node {
         .getClosestLeaf( request.getDestination().getIdentifier() );
     try
     {
+      // 1. check within bounds of leafset
       if ( closest != null )
       {
         if ( closest.equals( metadata.self() ) )
@@ -450,7 +451,9 @@ public class Peer implements Node {
         }
       } else
       {
-        closest = lookupDHT( request );
+        // 2. check in DHT and leaves
+        closest =
+            IdentifierUtilities.closest( metadata, request.getDestination() );
         connection = ConnectionUtilities.establishConnection( this,
             closest.getHost(), closest.getPort() );
         next = closest.getIdentifier();
@@ -468,53 +471,6 @@ public class Peer implements Node {
       }
       lookup( event, connection );
       return;
-    }
-  }
-
-  /**
-   * Consult the DHT to find the closest peer to request identifier.
-   * 
-   * <p>
-   * <ol>
-   * <li>Check if the index of {@code self} and {@code request}
-   * identifiers are the same, and keep going further down the rows
-   * until they are not the same.</li>
-   * <li>The peer at the {@code destination} column / row is not
-   * {@code null}; indicating the {@code self} DHT contains an entry
-   * matching the prefix of the {@code request} identifier.</li>
-   * <li>The {@code self} DHT does not contain any matching prefixes for
-   * a given row; forcing the a search around the rings for all
-   * remaining lower rows.</li>
-   * </ol>
-   * </p>
-   * 
-   * @param request
-   * @return the {@code PeerIdentifier} that is deemed closest
-   */
-  private PeerInformation lookupDHT(DiscoverPeerRequest request) {
-    int row = request.getRow();
-
-    int selfCol =
-        Character.digit( metadata.self().getIdentifier().charAt( row ), 16 );
-    int destCol = Character
-        .digit( request.getDestination().getIdentifier().charAt( row ), 16 );
-    // 1.
-    if ( selfCol == destCol )
-    {
-      request.incrementRow();
-      return lookupDHT( request );
-    } else
-    {
-      PeerInformation peer = metadata.table().getTableIndex( row, destCol );
-      // 2.
-      if ( peer != null )
-      {
-        return peer;
-      } else
-      { // 3.
-        return metadata.table().closest( metadata.self(),
-            request.getDestination() );
-      }
     }
   }
 
@@ -646,8 +602,9 @@ public class Peer implements Node {
       } else
       {
         request.setCanAddRow( false );
-        peer = metadata.table().closest( metadata.self(),
-            request.getDestination() );
+        peer =
+            IdentifierUtilities.closest( metadata, request.getDestination() );
+
         if ( peer.equals( metadata.self() ) )
         {
           LOG.debug( "Found closest node and responding to destination." ); // B.
