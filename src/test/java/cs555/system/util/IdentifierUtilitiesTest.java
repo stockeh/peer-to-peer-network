@@ -171,6 +171,58 @@ public class IdentifierUtilitiesTest {
 
     assertEquals( b, IdentifierUtilities.closest( metadata,
         new PeerInformation( "112D", null, 0 ) ) );
+    
+    /* -------------------------------------------- */
+
+    metadata = new PeerMetadata( null, 0 );
+    a = new PeerInformation( "3CEC", null, 0 );
+    b = new PeerInformation( "43A9", null, 0 );
+    c = new PeerInformation( "555B", null, 0 );
+    d = new PeerInformation( "6ACC", null, 0 );
+    e = new PeerInformation( "76AD", null, 0 );
+    f = new PeerInformation( "AEDC", null, 0 );
+    g = new PeerInformation( "CEE7", null, 0 );
+    h = new PeerInformation( "D294", null, 0 );
+    i = new PeerInformation( "D8FE", null, 0 );
+    j = new PeerInformation( "DA59", null, 0 );
+    k = new PeerInformation( "DBBC", null, 0 );
+    PeerInformation l = new PeerInformation( "DC01", null, 0 );
+
+    t = metadata.table();
+    t.addPeerToTable( a, 0 );
+    t.addPeerToTable( b, 0 );
+    t.addPeerToTable( c, 0 );
+    t.addPeerToTable( d, 0 );
+    t.addPeerToTable( e, 0 );
+    t.addPeerToTable( f, 0 );
+    t.addPeerToTable( g, 0 );
+    t.addPeerToTable( h, 1 );
+    t.addPeerToTable( i, 1 );
+    t.addPeerToTable( j, 1 );
+    t.addPeerToTable( k, 1 );
+    t.addPeerToTable( l, 1 );
+
+    metadata.leaf().setLeaf( h, Constants.CLOCKWISE );
+    metadata.leaf().setLeaf( g, Constants.COUNTER_CLOCKWISE );
+
+    metadata.setIdentifier( "D161" );
+    metadata.addSelfToTable();
+//     t.display();
+    System.out.println( metadata.leaf().toString() );
+
+    assertEquals( i, IdentifierUtilities.closest( metadata,
+        new PeerInformation( "D825", null, 0 ) ) );
+    
+//    -----------------------------------------------------------------------------------------------------------------
+//    | ---- | ---- | ---- | 3CEC | 43A9 | 555B | 6ACC | 76AD | ---- | ---- | AEDC | ---- | CEE7 | D161 | ---- | ---- | 
+//    | ---- | D161 | D294 | ---- | ---- | ---- | ---- | ---- | D8FE | ---- | DA59 | DBBC | DC01 | ---- | ---- | ---- | 
+//    | ---- | ---- | ---- | ---- | ---- | ---- | D161 | ---- | ---- | ---- | ---- | ---- | ---- | ---- | ---- | ---- | 
+//    | ---- | D161 | ---- | ---- | ---- | ---- | ---- | ---- | ---- | ---- | ---- | ---- | ---- | ---- | ---- | ---- | 
+//    -----------------------------------------------------------------------------------------------------------------
+//    cs555.system.node.Peer(interact:168) [INFO] - Updated Leaf Set: { CEE7 ccw <- D161 -> cw D294 }
+//    cs555.system.node.Store(onEvent:322) [DEBUG] - DISCOVER_PEER_REQUEST | Content Identifier: D825 | Hop: 3 | Next Node: 
+//    cs555.system.node.Store(transferData:433) [INFO] - Network Route Trace: -> CE00 -> D161 -> D294 -> D8FE
+
   }
 
 }

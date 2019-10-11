@@ -433,7 +433,7 @@ public class Peer implements Node {
         .getClosestLeaf( request.getDestination().getIdentifier() );
     try
     {
-      // 1. check within bounds of leafset
+      // 1. check if within bounds of leafset
       if ( closest != null )
       {
         if ( closest.equals( metadata.self() ) )
@@ -565,7 +565,6 @@ public class Peer implements Node {
       {
         request.setTableRow( metadata.table().getTableRow( request.getRow() ) );
         request.incrementRow();
-
       }
     }
     request.addNetworkTraceRoute( metadata.self().getIdentifier() );
@@ -577,7 +576,7 @@ public class Peer implements Node {
     {
       TCPConnection connection;
 
-      // 1. check within bounds of leafset
+      // 1. check if within bounds of leafset
       if ( closest != null )
       {
         if ( closest.equals( metadata.self() ) )

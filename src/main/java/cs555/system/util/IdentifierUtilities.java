@@ -142,73 +142,12 @@ public class IdentifierUtilities {
   public static PeerInformation closest(PeerMetadata metadata,
       PeerInformation destination) {
 
-    int row = 0;
-    int destCol =
-        Character.digit( destination.getIdentifier().charAt( row ), 16 );
-
     int dest = Integer.parseInt( destination.getIdentifier(), 16 );
     int diff = Integer.MAX_VALUE, other, temp_diff;
     PeerInformation closest = null, temp;
 
-    // 1. check position of destination in self table
-    boolean direction = false;
-    if ( ( temp = metadata.table().getTableIndex( row, destCol ) ) != null )
-    {
-      other = Integer.parseInt( temp.getIdentifier(), 16 );
-      diff = Math.abs( other - dest );
-      closest = temp;
-      if ( dest > other )
-      {
-        direction = Constants.COUNTER_CLOCKWISE;
-      } else
-      {
-        direction = Constants.CLOCKWISE;
-      }
-    }
-
-    // 2. check first row
-    boolean first = true;
-    for ( int i = 1; i < 16; ++i )
-    {
-      // clockwise
-      int col = ( destCol + i ) & 0xF;
-      temp = metadata.table().getTableIndex( row, col );
-      if ( temp != null )
-      {
-        other = Integer.parseInt( temp.getIdentifier(), 16 );
-        temp_diff = ( other - dest ) & 0xFFFF;
-        if ( temp_diff < diff )
-        {
-          diff = temp_diff;
-          closest = temp;
-        }
-        if ( temp.equals( metadata.self() ) && first )
-        {
-          first = false;
-          direction = Constants.CLOCKWISE;
-        }
-      }
-      // counter-clockwise
-      col = ( destCol - i ) & 0xF;
-      temp = metadata.table().getTableIndex( row, col );
-      if ( temp != null )
-      {
-        other = Integer.parseInt( temp.getIdentifier(), 16 );
-        temp_diff = ( dest - other ) & 0xFFFF;
-        if ( temp_diff < diff )
-        {
-          diff = temp_diff;
-          closest = temp;
-        }
-        if ( temp.equals( metadata.self() ) && first )
-        {
-          first = false;
-          direction = Constants.COUNTER_CLOCKWISE;
-        }
-      }
-    }
-    // 3. check rest of table
-    for ( int r = row + 1; r < Constants.NUMBER_OF_ROWS; ++r )
+    // 1. get closest in table from destination
+    for ( int r = 0; r < Constants.NUMBER_OF_ROWS; ++r )
     {
       for ( int col = 0; col < Constants.IDENTIFIER_BIT_LENGTH; ++col )
       {
@@ -217,8 +156,7 @@ public class IdentifierUtilities {
         {
           other = Integer.parseInt( temp.getIdentifier(), 16 );
           temp_diff =
-              direction == Constants.CLOCKWISE ? ( other - dest ) & 0xFFFF
-                  : ( dest - other ) & 0xFFFF;
+              Math.min( ( other - dest ) & 0xFFFF, ( dest - other ) & 0xFFFF );
           if ( temp_diff < diff )
           {
             diff = temp_diff;

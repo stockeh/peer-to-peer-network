@@ -101,10 +101,10 @@ public class RoutingTable {
       {
         if ( peer == null )
         {
-          sb.append( "null" );
+          sb.append( "----" );
         } else
         {
-          if ( Properties.SYSTEM_LOG_LEVEL.contentEquals( "INFO" ) )
+          if ( Properties.SYSTEM_DHT_STYLE.contentEquals( "SHORT" ) )
           {
             sb.append( String.format( "%4s",
                 peer.getIdentifier().substring( 0, i + 1 ) ) );

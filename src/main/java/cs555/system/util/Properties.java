@@ -18,4 +18,7 @@ public interface Properties {
   final String SYSTEM_LOG_LEVEL =
       Configurations.getInstance().getProperty( "system.log.level", "INFO" );
 
+  final String SYSTEM_DHT_STYLE =
+      Configurations.getInstance().getProperty( "system.dht.style", "SHORT" );
+  
 }
