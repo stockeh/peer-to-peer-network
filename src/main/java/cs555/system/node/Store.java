@@ -369,6 +369,7 @@ public class Store implements Node {
       String fs = message[ 3 ];
       try
       {
+        Files.createDirectories( Paths.get( message[ 3 ] ).getParent() );
         Files.write( Paths.get( message[ 3 ] ), data );
         LOG.info( "Finished writing " + fs + " to disk." );
       } catch ( IOException e )

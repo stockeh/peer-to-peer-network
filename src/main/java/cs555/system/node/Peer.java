@@ -85,7 +85,7 @@ public class Peer implements Node {
     {
       Peer node = new Peer( InetAddress.getLocalHost().getHostName(),
           serverSocket.getLocalPort() );
-      
+
       LOG.info( "Peer node starting up at: " + new Date() + ", on "
           + node.metadata.self().getConnection() );
 
@@ -320,7 +320,7 @@ public class Peer implements Node {
   }
 
   /**
-   * Reset the peer since it the last in the network
+   * Reset the peer since it the last and only in the network
    * 
    * @param connection
    */
@@ -433,6 +433,7 @@ public class Peer implements Node {
         .getClosestLeaf( request.getDestination().getIdentifier() );
     try
     {
+      // 1. check if within bounds of leafset
       if ( closest != null )
       {
         if ( closest.equals( metadata.self() ) )
@@ -450,7 +451,9 @@ public class Peer implements Node {
         }
       } else
       {
-        closest = lookupDHT( request );
+        // 2. check in DHT and leaves
+        closest =
+            IdentifierUtilities.closest( metadata, request.getDestination() );
         connection = ConnectionUtilities.establishConnection( this,
             closest.getHost(), closest.getPort() );
         next = closest.getIdentifier();
@@ -468,53 +471,6 @@ public class Peer implements Node {
       }
       lookup( event, connection );
       return;
-    }
-  }
-
-  /**
-   * Consult the DHT to find the closest peer to request identifier.
-   * 
-   * <p>
-   * <ol>
-   * <li>Check if the index of {@code self} and {@code request}
-   * identifiers are the same, and keep going further down the rows
-   * until they are not the same.</li>
-   * <li>The peer at the {@code destination} column / row is not
-   * {@code null}; indicating the {@code self} DHT contains an entry
-   * matching the prefix of the {@code request} identifier.</li>
-   * <li>The {@code self} DHT does not contain any matching prefixes for
-   * a given row; forcing the a search around the rings for all
-   * remaining lower rows.</li>
-   * </ol>
-   * </p>
-   * 
-   * @param request
-   * @return the {@code PeerIdentifier} that is deemed closest
-   */
-  private PeerInformation lookupDHT(DiscoverPeerRequest request) {
-    int row = request.getRow();
-
-    int selfCol =
-        Character.digit( metadata.self().getIdentifier().charAt( row ), 16 );
-    int destCol = Character
-        .digit( request.getDestination().getIdentifier().charAt( row ), 16 );
-    // 1.
-    if ( selfCol == destCol )
-    {
-      request.incrementRow();
-      return lookupDHT( request );
-    } else
-    {
-      PeerInformation peer = metadata.table().getTableIndex( row, destCol );
-      // 2.
-      if ( peer != null )
-      {
-        return peer;
-      } else
-      { // 3.
-        return metadata.table().closest( metadata.self(),
-            request.getDestination() );
-      }
     }
   }
 
@@ -598,57 +554,32 @@ public class Peer implements Node {
    */
   private synchronized void constructDHT(JoinNetwork request) {
 
+    int modifiedLcp = IdentifierUtilities.longestCommonPrefixLength(
+        metadata.self().getIdentifier(),
+        request.getDestination().getIdentifier() ) + 1;
     int row = request.getRow();
-    LOG.debug( "Current row for peer ( " + request.getDestination().toString()
-        + " ) is: " + row );
-    if ( request.canAddRow() )
+
+    if ( modifiedLcp > row )
     {
-      request.setTableRow( metadata.table().getTableRow( row ) );
+      for ( int i = 0; i < modifiedLcp - row; ++i )
+      {
+        request.setTableRow( metadata.table().getTableRow( request.getRow() ) );
+        request.incrementRow();
+      }
     }
     request.addNetworkTraceRoute( metadata.self().getIdentifier() );
 
-    int selfCol =
-        Character.digit( metadata.self().getIdentifier().charAt( row ), 16 );
-    int destCol = Character
-        .digit( request.getDestination().getIdentifier().charAt( row ), 16 );
+    String next = "";
+    PeerInformation closest = metadata.leaf()
+        .getClosestLeaf( request.getDestination().getIdentifier() );
+    try
+    {
+      TCPConnection connection;
 
-    if ( selfCol == destCol )
-    {
-      request.incrementRow();
-      constructDHT( request );
-    } else
-    {
-      PeerInformation peer = metadata.table().getTableIndex( row, destCol );
-      String next = "";
-      if ( peer != null && request.canAddRow() )
+      // 1. check if within bounds of leafset
+      if ( closest != null )
       {
-        LOG.debug( "Forward request to node with matching prefix." ); // A.
-        try
-        {
-          TCPConnection intermediate = ConnectionUtilities
-              .establishConnection( this, peer.getHost(), peer.getPort() );
-          request.incrementRow();
-          intermediate.getTCPSender().sendData( request.getBytes() );
-        } catch ( IOException e )
-        {
-          if ( metadata.removePeerFromTable( peer ) )
-          {
-            LOG.info(
-                ( new StringBuilder( "The peer ( " ).append( peer.toString() )
-                    .append( " ) was removed from the routing table." )
-                    .toString() ) );
-            metadata.table().display();
-          }
-          constructDHT( request );
-          return;
-        }
-        next = peer.getIdentifier();
-      } else
-      {
-        request.setCanAddRow( false );
-        peer = metadata.table().closest( metadata.self(),
-            request.getDestination() );
-        if ( peer.equals( metadata.self() ) )
+        if ( closest.equals( metadata.self() ) )
         {
           LOG.debug( "Found closest node and responding to destination." ); // B.
           if ( !metadata.leaf().isPopulated() )
@@ -668,43 +599,38 @@ public class Peer implements Node {
               request.setCCW( metadata.leaf().getCCW() );
             }
           }
-          try
-          {
-            TCPConnection destination = ConnectionUtilities.establishConnection(
-                this, request.getDestination().getHost(),
-                request.getDestination().getPort() );
-            destination.getTCPSender().sendData( request.getBytes() );
-          } catch ( IOException e )
-          {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
-          }
+          connection = ConnectionUtilities.establishConnection( this,
+              request.getDestination().getHost(),
+              request.getDestination().getPort() );
           next = request.getDestination().getIdentifier();
         } else
         {
-          LOG.debug( "Forward request to intermediary closer node in DHT." ); // C.
-          try
-          {
-            TCPConnection intermediate = ConnectionUtilities
-                .establishConnection( this, peer.getHost(), peer.getPort() );
-            intermediate.getTCPSender().sendData( request.getBytes() );
-          } catch ( IOException e )
-          {
-            if ( metadata.removePeerFromTable( peer ) )
-            {
-              LOG.info(
-                  ( new StringBuilder( "The peer ( " ).append( peer.toString() )
-                      .append( " ) was removed from the routing table." )
-                      .toString() ) );
-              metadata.table().display();
-            }
-            constructDHT( request );
-            return;
-          }
-          next = peer.getIdentifier();
+          connection = ConnectionUtilities.establishConnection( this,
+              closest.getHost(), closest.getPort() );
+          next = closest.getIdentifier();
         }
+      } else
+      {
+        // 2. check in DHT and leaves
+        closest =
+            IdentifierUtilities.closest( metadata, request.getDestination() );
+        connection = ConnectionUtilities.establishConnection( this,
+            closest.getHost(), closest.getPort() );
+        next = closest.getIdentifier();
       }
+      connection.getTCPSender().sendData( request.getBytes() );
       LOG.info( request.toString() + next );
+    } catch ( IOException e )
+    {
+      if ( metadata.removePeerFromTable( closest ) )
+      {
+        LOG.info( ( new StringBuilder( "The peer ( " )
+            .append( closest.toString() )
+            .append( " ) was removed from the routing table." ).toString() ) );
+        metadata.table().display();
+      }
+      constructDHT( request );
+      return;
     }
   }
 
