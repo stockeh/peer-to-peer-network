@@ -52,13 +52,15 @@ lincoln+BCAD
 Gradle is used for build automation, and can be executing manually with `gradle clean; gralde build`. The application is constructed within a multi-layer package under `cs555.system`, and can be ran by invoking the JAR as follows:
 
 ```console
+# Disovery startup
 $ java -cp ./conf/:./build/libs/fault-tolerant-file-system.jar cs555.system.node.Discovery
 
-# Optional Identification Argument
+# Peer startup with optional identification argument
 $ java -cp ./conf/:./build/libs/fault-tolerant-file-system.jar cs555.system.node.Peer 0001
 
-# Optional Live Store
+# Store invocation
 $ java -cp ./conf/:./build/libs/fault-tolerant-file-system.jar cs555.system.node.Store
+$ 
 ```
 
 #### Store Startup
