@@ -2,7 +2,7 @@
 
 **Pastry Peer to Peer Network**
 
-The objective of this project is to build a simple peer to peer network where individual peers have 16-bit identifiers. This includes several sub-components associated with it: relating to constructing the logical overlay and traversing the network efficiently to store and retrieve content. The routing solution is decentralized and leverages the leaf set and the routing table at each peer to ensure messages are delivered in *O(log N)* hops.
+Pastry is a comprehensive, scalable and efficient architecture for peer-to-peer applications. Peers within Pastry are self organizing, with assigned 16-bit identifiers, and form a decentralized logical overlay. Construction of such results in a deterministic and efficient routing algorithm. Lookup requests leverage a leaf set and distributed hash table (DHT) at each peer to ensure messages are delivered in *O(log N)* hops.
 
 ## Architecture
 
@@ -58,8 +58,8 @@ $ java -cp ./conf/:./build/libs/fault-tolerant-file-system.jar cs555.system.node
 # Peer startup with optional identification argument
 $ java -cp ./conf/:./build/libs/fault-tolerant-file-system.jar cs555.system.node.Peer 0001
 
-# Store invocation
-$ java -cp ./conf/:./build/libs/fault-tolerant-file-system.jar cs555.system.node.Store
+# Store invocation with optional commands
+$ java -cp ./conf/:./build/libs/fault-tolerant-file-system.jar cs555.system.node.Store upload data/ /
 $ 
 ```
 
